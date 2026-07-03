@@ -1,0 +1,184 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - paragraph [ref=e6]: D4D T2 Backup Prototype · Maven-style Air ISR Fusion
+      - heading "AirMaven Lite" [level=1] [ref=e7]
+      - paragraph [ref=e8]: 공개 항적·기상·뉴스/OSINT·위성궤도와 synthetic watch zone을 융합해 분석관이 먼저 확인할 이상징후를 지도와 citation briefing으로 보여주는 데모입니다.
+    - generic [ref=e9]:
+      - img [ref=e10]
+      - generic [ref=e13]: Analyst decision-support only
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]: AOI preset
+      - combobox "AOI preset" [ref=e17]:
+        - option "대만해협 · Taiwan Strait Air ISR Demo AOI" [selected]
+        - option "수도권 상공 · Seoul Metropolitan Airspace Demo AOI"
+        - option "남중국해 · South China Sea Air-Maritime AOI"
+        - option "서해/NLL 인근 · West Sea / NLL Adjacent Demo AOI"
+    - paragraph [ref=e18]: 공개 항적, 뉴스/OSINT, 기상, 위성궤도 보조 레이어를 결합해 대만해협 주변 공중 상황을 설명하는 출처 기반 AOI입니다.
+    - generic [ref=e19]:
+      - generic [ref=e20]: Basemap
+      - combobox "Basemap" [ref=e21]:
+        - option "Offline vector grid · no external tiles"
+        - option "Live OSM tiles · demo visual mode" [selected]
+    - generic [ref=e22]:
+      - generic [ref=e23]: Data mode
+      - combobox "Data mode" [ref=e24]:
+        - option "Public live cache · API snapshot" [selected]
+        - option "Demo cache · synthetic-safe"
+    - generic [ref=e25]:
+      - strong [ref=e26]: Live cache ready
+      - generic [ref=e27]: Generated 6/30/2026, 12:12:44 PM · cache 3m ago · checked 0s ago · poll 30s
+  - region "Live source status" [ref=e28]:
+    - generic [ref=e29]: "opensky: live · 3m ago"
+    - generic [ref=e30]: "openMeteo: live · 3m ago"
+    - generic [ref=e31]: "gdelt: fallback · no fresh pull"
+    - generic [ref=e32]: "googleNews: live · 3m ago"
+    - generic [ref=e33]: "celestrak: live · 3m ago"
+  - generic [ref=e34]:
+    - article [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]: Tracks
+        - img [ref=e38]
+      - strong [ref=e45]: "10"
+      - paragraph [ref=e46]: public API state vectors
+    - article [ref=e47]:
+      - generic [ref=e48]:
+        - generic [ref=e49]: Anomalies
+        - img [ref=e50]
+      - strong [ref=e52]: 3/2
+      - paragraph [ref=e53]: warning / watch review cues
+    - article [ref=e54]:
+      - generic [ref=e55]:
+        - generic [ref=e56]: Weather
+        - img [ref=e57]
+      - strong [ref=e62]: 18,540m
+      - paragraph [ref=e63]: 86% cloud, gust 9.7km/h
+    - article [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]: Orbital layer
+        - img [ref=e67]
+      - strong [ref=e73]: "1"
+      - paragraph [ref=e74]: public/synthetic satellite passes
+  - generic [ref=e75]:
+    - generic [ref=e76]:
+      - generic [ref=e77]:
+        - generic [ref=e78]
+        - generic [ref=e81]: live OSM basemap
+      - generic [ref=e83]:
+        - generic
+        - generic
+    - generic [ref=e137]:
+      - generic [ref=e138]:
+        - paragraph [ref=e139]: Anomaly Engine
+        - heading "Analyst-review cues" [level=2] [ref=e140]
+      - generic [ref=e141]:
+        - article [ref=e142]
+        - article [ref=e152]
+        - article [ref=e162]
+        - article [ref=e172]
+        - article [ref=e182]
+  - generic [ref=e192]:
+    - generic [ref=e193]:
+      - generic [ref=e194]:
+        - generic [ref=e195]
+        - generic [ref=e198]: deterministic-template
+      - paragraph [ref=e199]: Taiwan Strait Air ISR Demo AOI is showing 5 analyst-review cue(s) across public/cached tracks, weather context, OSINT signals, and synthetic watch zones. 0 non-commercial or demo track(s) are present. The system is designed to reduce analyst triage time, not to classify threats or recommend action.
+      - generic [ref=e200]:
+        - generic [ref=e201]
+        - generic [ref=e208]
+      - generic [ref=e215]:
+        - img [ref=e216]
+        - list [ref=e219]
+      - heading "Source cards" [level=3] [ref=e224]
+      - generic [ref=e225]:
+        - article [ref=e226]
+        - article [ref=e230]
+        - article [ref=e234]
+        - article [ref=e238]
+        - article [ref=e242]
+        - article [ref=e246]
+        - article [ref=e255]
+        - article [ref=e264]
+    - generic [ref=e267]:
+      - generic [ref=e268]:
+        - paragraph [ref=e269]: Timeline
+        - heading "Fused event stream" [level=2] [ref=e270]
+      - generic [ref=e271]:
+        - article [ref=e272]
+        - article [ref=e278]
+        - article [ref=e284]
+        - article [ref=e290]
+        - article [ref=e296]
+        - article [ref=e302]
+        - article [ref=e308]
+        - article [ref=e314]
+        - article [ref=e320]
+        - article [ref=e326]
+        - article [ref=e332]
+        - article [ref=e338]
+        - article [ref=e344]
+        - article [ref=e350]
+        - article [ref=e356]
+        - article [ref=e362]
+        - article [ref=e368]
+        - article [ref=e374]
+        - article [ref=e380]
+        - article [ref=e386]
+        - article [ref=e392]
+        - article [ref=e398]
+  - generic [ref=e404]:
+    - generic [ref=e405]:
+      - paragraph [ref=e406]: Data sources
+      - heading "Free/open API plan" [level=2] [ref=e407]
+    - generic [ref=e408]:
+      - article [ref=e409]:
+        - img [ref=e410]
+        - strong [ref=e414]: OpenSky Network
+        - paragraph [ref=e415]: Public ADS-B/state-vector aircraft data
+        - generic [ref=e416]: cached/live optional
+        - link "Docs" [ref=e417] [cursor=pointer]:
+          - /url: https://openskynetwork.github.io/opensky-api/rest.html
+      - article [ref=e418]:
+        - img [ref=e419]
+        - strong [ref=e423]: Open-Meteo
+        - paragraph [ref=e424]: Weather risk and visibility context
+        - generic [ref=e425]: cached/live optional
+        - link "Docs" [ref=e426] [cursor=pointer]:
+          - /url: https://open-meteo.com/en/docs
+      - article [ref=e427]:
+        - img [ref=e428]
+        - strong [ref=e432]: GDELT
+        - paragraph [ref=e433]: News/OSINT article and volume signals
+        - generic [ref=e434]: live cache with RSS fallback
+        - link "Docs" [ref=e435] [cursor=pointer]:
+          - /url: https://www.gdeltproject.org/data.html
+      - article [ref=e436]:
+        - img [ref=e437]
+        - strong [ref=e441]: Google News RSS
+        - paragraph [ref=e442]: Fallback public news search feed for OSINT cards
+        - generic [ref=e443]: live fallback cache
+        - link "Docs" [ref=e444] [cursor=pointer]:
+          - /url: https://news.google.com/rss
+      - article [ref=e445]:
+        - img [ref=e446]
+        - strong [ref=e450]: CelesTrak
+        - paragraph [ref=e451]: Public satellite GP/TLE orbital awareness
+        - generic [ref=e452]: live cached GP metadata
+        - link "Docs" [ref=e453] [cursor=pointer]:
+          - /url: https://celestrak.org/NORAD/documentation/gp-data-formats.php
+      - article [ref=e454]:
+        - img [ref=e455]
+        - strong [ref=e459]: OurAirports
+        - paragraph [ref=e460]: Public airport/airfield context
+        - generic [ref=e461]: future cached CSV
+        - link "Docs" [ref=e462] [cursor=pointer]:
+          - /url: https://ourairports.com/data/
+      - article [ref=e463]:
+        - img [ref=e464]
+        - strong [ref=e468]: Synthetic demo events
+        - paragraph [ref=e469]: Safe watch zones and exercise markers
+        - generic [ref=e470]: offline-first
+  - generic [ref=e471]:
+    - strong [ref=e472]: "Safety note:"
+    - text: This prototype uses public/cached/synthetic data only. It does not identify targets, recommend strikes, or automate engagement decisions.

@@ -1,0 +1,31 @@
+{
+  "name": "airmaven-lite",
+  "main": "./worker/index.js",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [
+    {
+      "pattern": "d4d.n2f.site",
+      "custom_domain": true
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "LIVE_SCENARIOS",
+      "id": "d8a9cf6a77a149cf9cd670d0851d0ef9"
+    }
+  ],
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+  "vars": {
+    "LIVE_CACHE_KEY": "airmaven:live-scenarios",
+    "REFRESH_REGIONS_PER_RUN": "1",
+    "OPENSKY_MAX_TRACKS_PER_REGION": "25",
+    "OPENSKY_FETCH_ENABLED": "true"
+  }
+}

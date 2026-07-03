@@ -1,0 +1,51 @@
+{
+  "name": "airmaven-lite",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev-live.mjs",
+    "dev:vite": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --host 0.0.0.0",
+    "generate:briefing": "node scripts/generate-briefing.mjs",
+    "test": "vitest run",
+    "lint": "eslint . --ext ts,tsx --max-warnings 0",
+    "fetch:live": "node scripts/fetch-live-data.mjs",
+    "live:loop": "node scripts/live-data-loop.mjs",
+    "dev:live": "node scripts/dev-live.mjs",
+    "dev:cloudflare": "npm run build && npx wrangler dev --test-scheduled",
+    "deploy:cloudflare": "npm run build && npx wrangler deploy"
+  },
+  "dependencies": {
+    "@turf/turf": "^7.2.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.468.0",
+    "maplibre-gl": "^5.24.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1",
+    "satellite.js": "^7.0.1",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.38.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/leaflet": "^1.9.16",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "9.38.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "jsdom": "^24.1.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "8.46.3",
+    "vite": "^6.4.3",
+    "vitest": "^3.2.6"
+  }
+}

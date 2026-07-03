@@ -1,0 +1,19 @@
+{
+  "name": "AirMaven Lite demo cache manifest",
+  "createdFor": "D4D T2 Maven-style Air ISR Fusion Copilot",
+  "mode": "cached-and-synthetic-first",
+  "sources": [
+    "OpenSky Network REST API cache shape",
+    "Open-Meteo weather cache shape",
+    "GDELT DOC 2.0 citation cache shape",
+    "CelesTrak GP/TLE orbital awareness cache shape",
+    "Synthetic watch zones and exercise markers",
+    "Local vector AOI grid; no live basemap tile requests"
+  ],
+  "limitations": [
+    "Public ADS-B coverage is incomplete.",
+    "Synthetic zones are not official boundaries.",
+    "OSINT correlation is not confirmation.",
+    "No targeting or engagement automation is performed."
+  ]
+}
