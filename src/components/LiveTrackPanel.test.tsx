@@ -43,6 +43,7 @@ const fusionContext: TrackFusionContext = {
 
 function renderPanel(overrides: Partial<Parameters<typeof LiveTrackPanel>[0]> = {}) {
   const onSelectTrack = vi.fn();
+  const onSelectShip = vi.fn();
   render(
     <LiveTrackPanel
       regionName="수도권"
@@ -56,10 +57,11 @@ function renderPanel(overrides: Partial<Parameters<typeof LiveTrackPanel>[0]> = 
       identity={null}
       activeAirspace={[]}
       ships={[]}
+      onSelectShip={onSelectShip}
       {...overrides}
     />,
   );
-  return { onSelectTrack };
+  return { onSelectTrack, onSelectShip };
 }
 
 describe('LiveTrackPanel', () => {
@@ -107,6 +109,15 @@ describe('LiveTrackPanel', () => {
     renderPanel({ ships: [] });
 
     expect(screen.getByText(/표시된 선박\(AIS\)이 없습니다/)).toBeInTheDocument();
+  });
+
+  it('calls onSelectShip with the clicked vessel id', async () => {
+    const user = userEvent.setup();
+    const { onSelectShip } = renderPanel({ ships: [cargoShip] });
+
+    await user.click(screen.getByText('HANARO'));
+
+    expect(onSelectShip).toHaveBeenCalledWith('ais-440123456');
   });
 
   it('renders the aircraft identity card and active airspace for the selected track', () => {

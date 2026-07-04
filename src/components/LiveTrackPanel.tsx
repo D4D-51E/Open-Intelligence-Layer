@@ -22,6 +22,8 @@ type LiveTrackPanelProps = {
   identity: AircraftIdentity | null;
   activeAirspace: AirspaceMatch[];
   ships: ShipTrack[];
+  selectedShipId?: string;
+  onSelectShip: (shipId: string) => void;
 };
 
 const airspaceKindLabels: Record<AirspaceKind, string> = {
@@ -263,7 +265,7 @@ function TrackTable({ tracks, selectedTrackId, onSelectTrack }: Pick<LiveTrackPa
   );
 }
 
-function ShipTable({ ships }: { ships: ShipTrack[] }) {
+function ShipTable({ ships, selectedShipId, onSelectShip }: { ships: ShipTrack[]; selectedShipId?: string; onSelectShip: (shipId: string) => void }) {
   if (ships.length === 0) {
     return <p className="live-track-empty">현재 뷰포트에 표시된 선박(AIS)이 없습니다. 합성 데이터는 만들지 않습니다.</p>;
   }
@@ -283,8 +285,16 @@ function ShipTable({ ships }: { ships: ShipTrack[] }) {
       <div className="live-track-table__body">
         {sorted.map((ship) => {
           const last = ship.points.at(-1);
+          const active = ship.id === selectedShipId;
           return (
-            <div key={ship.id} role="row" className="live-track-row live-track-row--ship">
+            <button
+              key={ship.id}
+              type="button"
+              role="row"
+              className={`live-track-row live-track-row--ship ${active ? 'is-active' : ''}`}
+              aria-pressed={active}
+              onClick={() => onSelectShip(ship.id)}
+            >
               <span className="live-track-row__callsign" role="cell">
                 <Ship size={13} aria-label="AIS 선박" />
                 {ship.name}
@@ -292,7 +302,7 @@ function ShipTable({ ships }: { ships: ShipTrack[] }) {
               <span role="cell">{vesselTypeLabel(ship.vesselType)}</span>
               <span role="cell">{last ? `${last.speedKnots}kn` : '-'}</span>
               <span role="cell">{freshnessLabel(last?.observedAt)}</span>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -364,6 +374,8 @@ export function LiveTrackPanel({
   identity,
   activeAirspace,
   ships,
+  selectedShipId,
+  onSelectShip,
 }: LiveTrackPanelProps) {
   const [tab, setTab] = useState<LiveTrackTab>('tracks');
   const selectedTrack = tracks.find((track) => track.id === selectedTrackId);
@@ -411,7 +423,7 @@ export function LiveTrackPanel({
               <p className="eyebrow"><Ship size={12} /> Live Vessels · AIS</p>
               {ships.length > 0 ? <span className="pill">{ships.length}척</span> : null}
             </div>
-            <ShipTable ships={ships} />
+            <ShipTable ships={ships} selectedShipId={selectedShipId} onSelectShip={onSelectShip} />
             <AircraftIdentityCard identity={identity} track={selectedTrack} activeAirspace={activeAirspace} />
             <TrackFusionCard context={fusionContext} />
           </div>

@@ -15,6 +15,7 @@ import { fetchAdsbLolGlobalMilitary, fetchAdsbLolViewportTracks } from './lib/ad
 import { fetchStrategyForZoom, viewportRadiusNm, type Viewport } from './lib/viewport';
 import { fetchHistoryTracks } from './lib/historyApi';
 import { fetchVesselTracks } from './lib/vesselsApi';
+import { vesselTypeLabel } from './lib/display';
 import { fetchOsint, type OsintRow } from './lib/osintApi';
 import { fetchNotam, type NotamRow } from './lib/notamApi';
 import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, ShipTrack, Track } from './lib/types';
@@ -162,6 +163,19 @@ function buildTrackPopupHtml(track: Track, identity: AircraftIdentity | null, fu
   </div>`;
 }
 
+function buildShipPopupHtml(ship: ShipTrack): string {
+  const last = ship.points.at(-1);
+  const rows: string[] = [];
+  rows.push(`<div><b>유형</b> ${escapeHtml(vesselTypeLabel(ship.vesselType))}</div>`);
+  if (ship.mmsi) rows.push(`<div><b>MMSI</b> ${escapeHtml(ship.mmsi)}</div>`);
+  if (last) rows.push(`<div><b>속도/침로</b> ${last.speedKnots}kn · ${Math.round(last.courseDeg)}°</div>`);
+  return `<div class="globe-track-popup__body">
+    <div class="globe-track-popup__head">${escapeHtml(ship.name)}<span class="globe-track-popup__mil globe-track-popup__ais">AIS</span></div>
+    ${rows.join('')}
+    <div class="globe-track-popup__safe">공개 AIS · 비표적화</div>
+  </div>`;
+}
+
 function App() {
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [viewportTracks, setViewportTracks] = useState<Track[]>([]);
@@ -169,6 +183,7 @@ function App() {
   const [trackLoadState, setTrackLoadState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [trackLastErrorAt, setTrackLastErrorAt] = useState<string | null>(null);
   const [selectedTrackId, setSelectedTrackId] = useState<string | undefined>();
+  const [selectedShipId, setSelectedShipId] = useState<string | undefined>();
   const [operatorDb, setOperatorDb] = useState<OperatorDb | null>(null);
   const [liveCache, setLiveCache] = useState<LiveScenarioCache | null>(null);
   const [aircraftTypeFilter, setAircraftTypeFilter] = useState<AircraftTypeFilter>('all');
@@ -247,18 +262,32 @@ function App() {
     return matchActiveAirspace({ lat: last.lat, lon: last.lon, altitudeM: last.altitudeM, observedAt: last.observedAt }, scenario.notices, new Date());
   }, [scenario.notices, selectedTrack]);
 
+  const selectedShip = useMemo(() => scenario.ships.find((s) => s.id === selectedShipId), [scenario.ships, selectedShipId]);
+
   const focusTrack = useMemo(() => {
+    const shipLast = selectedShip?.points.at(-1);
+    if (selectedShip && shipLast) {
+      return { lat: shipLast.lat, lon: shipLast.lon, html: buildShipPopupHtml(selectedShip) };
+    }
     const last = selectedTrack?.points.at(-1);
     if (!selectedTrack || !last) return null;
     return { lat: last.lat, lon: last.lon, html: buildTrackPopupHtml(selectedTrack, aircraftIdentity, fusionContext) };
-  }, [aircraftIdentity, fusionContext, selectedTrack]);
+  }, [aircraftIdentity, fusionContext, selectedShip, selectedTrack]);
 
   const militaryCount = useMemo(() => scenario.tracks.filter((t) => t.isMilitary).length, [scenario.tracks]);
 
   const handleSelectTrack = useCallback((trackId: string) => {
+    setSelectedShipId(undefined);
     setSelectedTrackId((current) => (current === trackId ? undefined : trackId));
   }, []);
-  const handleFocusClose = useCallback(() => setSelectedTrackId(undefined), []);
+  const handleSelectShip = useCallback((shipId: string) => {
+    setSelectedTrackId(undefined);
+    setSelectedShipId((current) => (current === shipId ? undefined : shipId));
+  }, []);
+  const handleFocusClose = useCallback(() => {
+    setSelectedTrackId(undefined);
+    setSelectedShipId(undefined);
+  }, []);
   const handleViewportChange = useCallback((v: Viewport) => {
     viewportRef.current = v;
     setViewport(v);
@@ -522,6 +551,8 @@ function App() {
           identity={aircraftIdentity}
           activeAirspace={activeAirspace}
           ships={scenario.ships}
+          selectedShipId={selectedShipId}
+          onSelectShip={handleSelectShip}
         />
       </aside>
 

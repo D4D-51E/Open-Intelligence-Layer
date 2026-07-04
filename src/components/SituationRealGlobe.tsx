@@ -172,7 +172,14 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
     const feature = lineFeature(ship.id, ship.points.map((point) => lonLat(point.lat, point.lon)), { kind: 'ship', title: ship.name, severity: 'info' });
     if (feature) lines.push(feature);
     const last = ship.points[ship.points.length - 1];
-    points.push(pointFeature(`ship-last-${ship.id}`, last.lat, last.lon, { kind: 'ship', title: ship.name, severity: 'info' }));
+    points.push(pointFeature(`ship-last-${ship.id}`, last.lat, last.lon, {
+      kind: 'ship',
+      title: ship.name,
+      severity: 'info',
+      heading: last.courseDeg,
+      shipId: ship.id,
+    }));
+    labels.push(pointFeature(`ship-label-${ship.id}`, last.lat, last.lon, { kind: 'ship-label', title: ship.name, color: '#67e8f9' }));
   }
 
   for (const airport of props.airports) {
@@ -344,6 +351,39 @@ function ensureAircraftIcon(map: MapLibreMap) {
   if (!icon) return;
   try {
     map.addImage('airmaven-aircraft', icon, { sdf: true });
+  } catch {
+    // image already registered by a concurrent call; safe to ignore
+  }
+}
+
+function createShipIcon(size = 44): ImageData | null {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = '#ffffff';
+  const c = size / 2;
+  // boat hull, bow pointing up (north) so icon-rotate=course aligns
+  ctx.beginPath();
+  ctx.moveTo(c, size * 0.12);
+  ctx.lineTo(c + size * 0.19, size * 0.44);
+  ctx.lineTo(c + size * 0.19, size * 0.84);
+  ctx.lineTo(c - size * 0.19, size * 0.84);
+  ctx.lineTo(c - size * 0.19, size * 0.44);
+  ctx.closePath();
+  ctx.fill();
+  return ctx.getImageData(0, 0, size, size);
+}
+
+function ensureShipIcon(map: MapLibreMap) {
+  if (map.hasImage('airmaven-ship')) return;
+  const icon = createShipIcon();
+  if (!icon) return;
+  try {
+    map.addImage('airmaven-ship', icon, { sdf: true });
   } catch {
     // image already registered by a concurrent call; safe to ignore
   }
@@ -586,7 +626,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
         ],
         'circle-stroke-width': ['match', ['get', 'kind'], 'region-switch', 2.2, 1.2],
         'circle-stroke-color': '#020403',
-        'circle-opacity': ['match', ['get', 'kind'], 'track', 0.28, 0.95],
+        'circle-opacity': ['match', ['get', 'kind'], 'track', 0.28, 'ship', 0.5, 0.95],
       },
     });
   }
@@ -611,6 +651,29 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
           'case', ['coalesce', ['get', 'isMilitary'], false], '#ff5d47',
           ['match', ['get', 'severity'], 'warning', '#ff5d47', 'watch', '#ffb238', '#7df9ff'],
         ],
+        'icon-halo-color': '#020403',
+        'icon-halo-width': 1.1,
+      },
+    });
+  }
+
+  ensureShipIcon(map);
+  if (map.hasImage('airmaven-ship') && !map.getLayer('airmaven-ship-symbols')) {
+    map.addLayer({
+      id: 'airmaven-ship-symbols',
+      type: 'symbol',
+      source: 'airmaven-points',
+      filter: ['==', ['get', 'kind'], 'ship'],
+      layout: {
+        'icon-image': 'airmaven-ship',
+        'icon-size': 0.5,
+        'icon-rotate': ['coalesce', ['get', 'heading'], 0],
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: {
+        'icon-color': '#67e8f9',
         'icon-halo-color': '#020403',
         'icon-halo-width': 1.1,
       },
