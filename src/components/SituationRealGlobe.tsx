@@ -3,6 +3,7 @@ import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type MapMouseE
 import { useEffect, useMemo, useRef } from 'react';
 import type { AirportContext, AirRoute, AirspaceContext, AirspaceNotice, Anomaly, OsintMapEvent, ReferenceLine, Region, RegionId, SatellitePass, ShipTrack, Track, WatchZone } from '../lib/types';
 import type { AssessedClaim } from '../lib/claimVerify';
+import type { SeismicEvent } from '../lib/seismicApi';
 import { safeExternalUrl } from '../lib/safeLinks';
 import { MapRegionSwitcher } from './MapRegionSwitcher';
 
@@ -21,6 +22,7 @@ type SituationRealGlobeProps = {
   airspaceContexts: AirspaceContext[];
   osintEvents: OsintMapEvent[];
   claims: AssessedClaim[];
+  seismic: SeismicEvent[];
   anomalies: Anomaly[];
   onViewportChange?: (viewport: { bbox: [number, number, number, number]; zoom: number; center: [number, number] }) => void;
   focusTrack?: { id: string; lat: number; lon: number; html: string } | null;
@@ -198,6 +200,19 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
       severity: 'info',
     }));
     labels.push(pointFeature(`claim-label-${claim.key}`, claim.lat, claim.lon, { kind: 'osint-label', title: claim.place, color: '#ff7a35' }));
+  }
+
+  // Explosion-like seismic events (EMSC, shallow ≤2km) — red markers with a magnitude label.
+  for (const eq of props.seismic) {
+    const mag = eq.mag != null ? `M${eq.mag}` : 'M?';
+    const depth = eq.depthKm != null ? ` · ${eq.depthKm.toFixed(0)}km` : '';
+    points.push(pointFeature(`seismic-${eq.id}`, eq.lat, eq.lon, {
+      kind: 'seismic',
+      title: `${mag}${depth}${eq.region ? ` · ${eq.region}` : ''}`.slice(0, 60),
+      severity: 'info',
+      color: '#ff3355',
+    }));
+    labels.push(pointFeature(`seismic-label-${eq.id}`, eq.lat, eq.lon, { kind: 'seismic-label', title: mag, color: '#ff3355' }));
   }
 
   for (const airport of props.airports) {
@@ -601,7 +616,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
       type: 'circle',
       source: 'airmaven-points',
       paint: {
-        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 16, 'track', 12, 'osint', 13, 'satellite', 12, 'claim', 12, 9],
+        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 16, 'track', 12, 'osint', 13, 'satellite', 12, 'claim', 12, 'seismic', 12, 9],
         'circle-color': [
           'match', ['get', 'kind'],
           'region-switch', '#7dffcf',
@@ -618,6 +633,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
           'satellite', '#bda9ff',
           'ship', '#67e8f9',
           'claim', ['coalesce', ['get', 'color'], '#22ccbb'],
+          'seismic', ['coalesce', ['get', 'color'], '#ff3355'],
           '#7df9ff',
         ],
         'circle-opacity': 0.14,
@@ -649,6 +665,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
           'satellite', '#bda9ff',
           'ship', '#67e8f9',
           'claim', ['coalesce', ['get', 'color'], '#22ccbb'],
+          'seismic', ['coalesce', ['get', 'color'], '#ff3355'],
           '#7df9ff',
         ],
         'circle-stroke-width': ['match', ['get', 'kind'], 'region-switch', 2.2, 1.2],

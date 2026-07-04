@@ -20,6 +20,7 @@ import { fetchOsint, type OsintRow } from './lib/osintApi';
 import { fetchTelegramPosts, type TelegramPost } from './lib/telegramApi';
 import { assessClaims, type AssessedClaim } from './lib/claimVerify';
 import { fetchNotam, type NotamRow } from './lib/notamApi';
+import { fetchSeismic, type SeismicEvent } from './lib/seismicApi';
 import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, ShipTrack, Track } from './lib/types';
 
 type AircraftTypeFilter = 'all' | 'military' | Track['platformType'];
@@ -195,6 +196,8 @@ function App() {
   const [showAirspace, setShowAirspace] = useState(true);
   const [showOsint, setShowOsint] = useState(true);
   const [showNotam, setShowNotam] = useState(true);
+  const [showSeismic, setShowSeismic] = useState(false);
+  const [seismicEvents, setSeismicEvents] = useState<SeismicEvent[]>([]);
   const [liveOsint, setLiveOsint] = useState<OsintMapEvent[]>([]);
   const [liveNotam, setLiveNotam] = useState<AirspaceNotice[]>([]);
   const [telegramPosts, setTelegramPosts] = useState<TelegramPost[]>([]);
@@ -284,6 +287,9 @@ function App() {
     const [minLon, minLat, maxLon, maxLat] = viewport.bbox;
     return assessedClaims.filter((c) => c.lon >= minLon && c.lon <= maxLon && c.lat >= minLat && c.lat <= maxLat);
   }, [assessedClaims, viewport]);
+
+  // Explosion-like filter: shallow (≤2 km) near-surface seismic events only.
+  const explosionEvents = useMemo(() => seismicEvents.filter((e) => e.explosionLike), [seismicEvents]);
 
   const selectedTrack = useMemo(() => scenario.tracks.find((t) => t.id === selectedTrackId), [scenario.tracks, selectedTrackId]);
   const fusionContext = useMemo(
@@ -542,6 +548,21 @@ function App() {
     return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
   }, []);
 
+  // EMSC seismic (viewport bbox), only while the 지진 layer is on. Explosion-like = shallow.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || !showSeismic) return undefined;
+    let cancelled = false;
+    let controller = new AbortController();
+    const load = async () => {
+      controller = new AbortController();
+      const events = await fetchSeismic(viewportRef.current?.bbox, 24, controller.signal);
+      if (!cancelled) setSeismicEvents(events);
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 5 * 60 * 1000);
+    return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
+  }, [showSeismic, viewport]);
+
   // Live NOTAM circles (Neon /api/notam), by the current viewport bbox.
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.fetch !== 'function') return undefined;
@@ -574,6 +595,7 @@ function App() {
           airspaceContexts={[]}
           osintEvents={scenario.osintEvents}
           claims={showOsint ? regionalClaims : []}
+          seismic={showSeismic ? explosionEvents : []}
           anomalies={anomalies}
           onViewportChange={handleViewportChange}
           focusTrack={focusTrack}
@@ -606,6 +628,9 @@ function App() {
         </button>
         <button type="button" className={showOsint ? 'is-active' : ''} onClick={() => setShowOsint((s) => !s)}>
           OSINT {showOsint ? 'ON' : 'OFF'}
+        </button>
+        <button type="button" className={showSeismic ? 'is-active' : ''} onClick={() => setShowSeismic((s) => !s)} title="EMSC 얕은 진원(≤2km) 지진 = 폭발/타격 가능">
+          폭발형 {showSeismic ? 'ON' : 'OFF'}
         </button>
         <button type="button" className={showNotam ? 'is-active' : ''} onClick={() => setShowNotam((s) => !s)}>
           NOTAM {showNotam ? 'ON' : 'OFF'}
