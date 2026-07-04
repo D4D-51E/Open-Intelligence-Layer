@@ -258,8 +258,8 @@ function TrackTable({ tracks, selectedTrackId, onSelectTrack }: Pick<LiveTrackPa
                 {platformLabels[track.platformType]}
                 {track.isMilitary ? <em className="live-track-badge">군용</em> : null}
               </span>
-              <span role="cell">{last ? `${last.altitudeM.toLocaleString('ko-KR')}m` : '-'}</span>
-              <span role="cell">{last ? `${last.velocityMs}m/s` : '-'}</span>
+              <span role="cell">{last ? `${Math.round(last.altitudeM * 3.28084).toLocaleString('ko-KR')}ft` : '-'}</span>
+              <span role="cell">{last ? `${Math.round(last.velocityMs * 1.94384)}kn` : '-'}</span>
               <span role="cell">{freshnessLabel(last?.observedAt)}</span>
             </button>
           );

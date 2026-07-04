@@ -2,7 +2,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
 import { useEffect, useMemo, useRef } from 'react';
 import type { AirportContext, AirRoute, AirspaceContext, AirspaceNotice, Anomaly, OsintMapEvent, ReferenceLine, Region, RegionId, SatellitePass, ShipTrack, Track, WatchZone } from '../lib/types';
-import { VERDICT_COLOR, type AssessedClaim } from '../lib/claimVerify';
+import type { AssessedClaim } from '../lib/claimVerify';
 import { safeExternalUrl } from '../lib/safeLinks';
 import { MapRegionSwitcher } from './MapRegionSwitcher';
 
@@ -187,17 +187,17 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
     labels.push(pointFeature(`ship-label-${ship.id}`, last.lat, last.lon, { kind: 'ship-label', title: ship.name, color: '#67e8f9' }));
   }
 
-  // Geolocated Telegram claims, coloured by verification verdict. Click → open the source.
+  // Geolocated Telegram claims render as OSINT markers (orange). No source link on the map —
+  // opening the original source is done from the Claim Verification panel row, not here.
   for (const claim of props.claims) {
-    const color = VERDICT_COLOR[claim.verdict];
     points.push(pointFeature(`claim-${claim.key}`, claim.lat, claim.lon, {
-      kind: 'claim',
-      title: `${claim.place} · ${claim.verdict}`,
+      kind: 'osint',
+      reviewKind: 'osint-news',
+      title: claim.place,
+      source: `Telegram · ${claim.channel}`,
       severity: 'info',
-      color,
-      claimUrl: claim.url ?? '',
     }));
-    labels.push(pointFeature(`claim-label-${claim.key}`, claim.lat, claim.lon, { kind: 'claim-label', title: claim.place, color }));
+    labels.push(pointFeature(`claim-label-${claim.key}`, claim.lat, claim.lon, { kind: 'osint-label', title: claim.place, color: '#ff7a35' }));
   }
 
   for (const airport of props.airports) {
@@ -319,7 +319,6 @@ function bindPointPopup(map: MapLibreMap, getCallbacks: () => PopupCallbacks) {
     const cbs = getCallbacks();
     if (properties.kind === 'track' && typeof properties.trackId === 'string') { cbs.onSelectTrack?.(properties.trackId); return; }
     if (properties.kind === 'ship' && typeof properties.shipId === 'string') { cbs.onSelectShip?.(properties.shipId); return; }
-    if (properties.kind === 'claim' && typeof properties.claimUrl === 'string' && properties.claimUrl) { window.open(properties.claimUrl, '_blank', 'noopener,noreferrer'); return; }
     const coordinates = feature.geometry.type === 'Point'
       ? feature.geometry.coordinates as [number, number]
       : event.lngLat.toArray() as [number, number];

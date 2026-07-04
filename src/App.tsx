@@ -155,7 +155,7 @@ function buildTrackPopupHtml(track: Track, identity: AircraftIdentity | null, fu
   if (identity?.icao24 || identity?.registrationCountry) {
     rows.push(`<div><b>ICAO24</b> ${escapeHtml(identity.icao24 ?? '-')}${identity.registrationCountry ? ` · ${escapeHtml(identity.registrationCountry)}` : ''}</div>`);
   }
-  if (last) rows.push(`<div><b>고도/속도</b> ${last.altitudeM.toLocaleString()}m · ${last.velocityMs}m/s</div>`);
+  if (last) rows.push(`<div><b>고도/속도</b> ${Math.round(last.altitudeM * 3.28084).toLocaleString()}ft · ${Math.round(last.velocityMs * 1.94384)}kn</div>`);
   const presentAxes = (fusion?.axes ?? []).filter((axis) => axis.present).slice(0, 3);
   for (const axis of presentAxes) rows.push(`<div><b>${escapeHtml(axis.label)}</b> ${escapeHtml(axis.detail)}</div>`);
   return `<div class="globe-track-popup__body">
