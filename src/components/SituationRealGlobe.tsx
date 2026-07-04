@@ -75,25 +75,6 @@ function closeRing(points: Coordinate[]) {
   return [...points, first];
 }
 
-function bboxFeature(region: Region): Feature {
-  const [minLon, minLat, maxLon, maxLat] = region.bbox;
-  return {
-    type: 'Feature',
-    id: `bbox-${region.id}`,
-    properties: { kind: region.id === 'global' ? 'global-aoi' : 'aoi', title: `${region.shortName} AOI`, severity: 'info' },
-    geometry: {
-      type: 'Polygon',
-      coordinates: [[
-        [minLon, minLat],
-        [maxLon, minLat],
-        [maxLon, maxLat],
-        [minLon, maxLat],
-        [minLon, minLat],
-      ]],
-    },
-  };
-}
-
 function circleRing(lat: number, lon: number, radiusKm: number): Coordinate[] {
   const coordinates: Coordinate[] = [];
   const latDelta = radiusKm / 111;
@@ -122,30 +103,11 @@ function pointFeature(id: string, lat: number, lon: number, properties: Properti
 }
 
 function overlayCollections(props: SituationRealGlobeProps): OverlayCollections {
-  const polygons: Feature[] = [bboxFeature(props.region)];
+  // Viewport-driven global globe: no fixed-AOI box, region label, or preset-switch markers.
+  const polygons: Feature[] = [];
   const lines: Feature[] = [];
   const points: Feature[] = [];
-  const labels: Feature[] = [pointFeature(`label-${props.region.id}`, props.region.center[0], props.region.center[1], {
-    kind: 'region',
-    title: props.region.shortName,
-    color: '#7df9ff',
-  })];
-
-  for (const targetRegion of props.selectableRegions ?? []) {
-    if (targetRegion.id === props.region.id) continue;
-    points.push(pointFeature(`region-switch-${targetRegion.id}`, targetRegion.center[0], targetRegion.center[1], {
-      kind: 'region-switch',
-      title: `${targetRegion.shortName} 상세 지도`,
-      targetRegionId: targetRegion.id,
-      severity: 'info',
-    }));
-    labels.push(pointFeature(`region-switch-label-${targetRegion.id}`, targetRegion.center[0], targetRegion.center[1], {
-      kind: 'region-switch-label',
-      title: targetRegion.shortName,
-      targetRegionId: targetRegion.id,
-      color: '#7dffcf',
-    }));
-  }
+  const labels: Feature[] = [];
 
   for (const zone of props.zones) {
     polygons.push({
