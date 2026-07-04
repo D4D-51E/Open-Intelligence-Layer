@@ -22,6 +22,7 @@ type SituationRealGlobeProps = {
   anomalies: Anomaly[];
   onViewportChange?: (viewport: { bbox: [number, number, number, number]; zoom: number; center: [number, number] }) => void;
   focusTrack?: { lat: number; lon: number; html: string } | null;
+  onFocusClose?: () => void;
   showAirspace?: boolean;
 };
 
@@ -410,7 +411,7 @@ function ensureAirspaceLayers(map: MapLibreMap, visible: boolean) {
       'source-layer': 'airspaces',
       minzoom: AIRSPACE_MIN_ZOOM,
       layout: { visibility },
-      paint: { 'fill-color': airspaceColor, 'fill-opacity': 0.1 },
+      paint: { 'fill-color': airspaceColor, 'fill-opacity': 0.15 },
     });
   }
   if (!map.getLayer('openaip-airspace-line')) {
@@ -421,7 +422,7 @@ function ensureAirspaceLayers(map: MapLibreMap, visible: boolean) {
       'source-layer': 'airspaces',
       minzoom: AIRSPACE_MIN_ZOOM,
       layout: { visibility, 'line-join': 'round' },
-      paint: { 'line-color': airspaceColor, 'line-width': 1, 'line-opacity': 0.6 },
+      paint: { 'line-color': airspaceColor, 'line-width': 1.2, 'line-opacity': 0.75 },
     });
   }
 }
@@ -726,17 +727,22 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
     const focus = props.focusTrack;
     if (!focus) return undefined;
     map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), 8.5), duration: 900, essential: true });
-    focusPopupRef.current = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '340px', className: 'globe-track-popup' })
+    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '340px', className: 'globe-track-popup' })
       .setLngLat([focus.lon, focus.lat])
       .setHTML(focus.html)
       .addTo(map);
+    focusPopupRef.current = popup;
+    // The user clicking the popup's × fires 'close' — clear the selection in the parent so
+    // the popup does not immediately reopen on the next track-poll re-render. Detach the
+    // listener before the programmatic remove() in cleanup so re-renders don't clear it.
+    const handleUserClose = () => props.onFocusClose?.();
+    popup.on('close', handleUserClose);
     return () => {
-      if (focusPopupRef.current) {
-        focusPopupRef.current.remove();
-        focusPopupRef.current = null;
-      }
+      popup.off('close', handleUserClose);
+      popup.remove();
+      focusPopupRef.current = null;
     };
-  }, [props.focusTrack]);
+  }, [props.focusTrack, props.onFocusClose]);
 
   // Toggle OpenAIP airspace layers.
   useEffect(() => {

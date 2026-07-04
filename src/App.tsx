@@ -64,26 +64,40 @@ function nearestRegionId(center: [number, number]): RegionId {
   return bestKm < 900 ? best : defaultRegionId;
 }
 
-function historyRowToTrack(row: Awaited<ReturnType<typeof fetchHistoryTracks>>[number]): Track {
-  return {
-    id: `hist-${row.icao24 ?? row.callsign ?? 'x'}-${row.observed_at}`,
-    source: 'adsb-cache',
-    callsign: row.callsign ?? row.icao24 ?? 'Aircraft',
-    originCountry: 'Unknown',
-    platformType: 'unknown',
-    baselineCorridorKm: 25,
-    isMilitary: row.is_military,
-    icao24: row.icao24 ?? undefined,
-    typeCode: row.type_code ?? undefined,
-    points: [{
-      lat: row.lat,
-      lon: row.lon,
-      altitudeM: row.altitude_m ?? 0,
-      velocityMs: row.velocity_ms ?? 0,
-      headingDeg: row.heading_deg ?? 0,
-      observedAt: row.observed_at,
-    }],
-  };
+// Aggregate history rows into one multi-point track per aircraft so the timeline renders
+// actual trails (항적). Each row is a single observation; grouping by icao24/callsign and
+// sorting by time turns the scattered points into a continuous track across the window.
+function buildHistoryTracks(rows: Awaited<ReturnType<typeof fetchHistoryTracks>>): Track[] {
+  const byAircraft = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const key = row.icao24 ?? row.callsign ?? `${row.lat},${row.lon}`;
+    const existing = byAircraft.get(key);
+    if (existing) existing.push(row);
+    else byAircraft.set(key, [row]);
+  }
+  return [...byAircraft].map(([key, group]) => {
+    const sorted = [...group].sort((a, b) => a.observed_at.localeCompare(b.observed_at));
+    const latest = sorted[sorted.length - 1];
+    return {
+      id: `hist-${key}`,
+      source: 'adsb-cache',
+      callsign: latest.callsign ?? latest.icao24 ?? 'Aircraft',
+      originCountry: 'Unknown',
+      platformType: 'unknown',
+      baselineCorridorKm: 25,
+      isMilitary: latest.is_military,
+      icao24: latest.icao24 ?? undefined,
+      typeCode: latest.type_code ?? undefined,
+      points: sorted.map((row) => ({
+        lat: row.lat,
+        lon: row.lon,
+        altitudeM: row.altitude_m ?? 0,
+        velocityMs: row.velocity_ms ?? 0,
+        headingDeg: row.heading_deg ?? 0,
+        observedAt: row.observed_at,
+      })),
+    };
+  });
 }
 
 function osintRowToEvent(row: OsintRow, index: number): OsintMapEvent | null {
@@ -240,6 +254,7 @@ function App() {
   const handleSelectTrack = useCallback((trackId: string) => {
     setSelectedTrackId((current) => (current === trackId ? undefined : trackId));
   }, []);
+  const handleFocusClose = useCallback(() => setSelectedTrackId(undefined), []);
   const handleViewportChange = useCallback((v: Viewport) => {
     viewportRef.current = v;
     setViewport(v);
@@ -330,7 +345,7 @@ function App() {
         limit: 3000,
         signal: controller.signal,
       });
-      if (!cancelled) setHistoryTracks(rows.map(historyRowToTrack));
+      if (!cancelled) setHistoryTracks(buildHistoryTracks(rows));
     })();
     return () => { cancelled = true; controller.abort(); };
   }, [regionId, timelineMode, timelineValue]);
@@ -397,6 +412,7 @@ function App() {
           anomalies={anomalies}
           onViewportChange={handleViewportChange}
           focusTrack={focusTrack}
+          onFocusClose={handleFocusClose}
           showAirspace={showAirspace}
         />
       </div>
@@ -452,7 +468,7 @@ function App() {
       </div>
 
       {showAirspace ? (
-        <div className="globe-hud globe-hud--legend" aria-label="공역 분류 범례">
+        <div className={`globe-hud globe-hud--legend${timelineMode ? ' globe-hud--legend--raised' : ''}`} aria-label="공역 분류 범례">
           <span className="globe-hud--legend__title">공역 분류</span>
           {AIRSPACE_LEGEND.map((row) => (
             <span key={row.label} className="globe-hud--legend__row">

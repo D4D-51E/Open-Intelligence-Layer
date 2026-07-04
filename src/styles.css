@@ -847,7 +847,7 @@ a.track-fusion-axis__cite { color: var(--accent); }
 }
 
 .globe-hud--legend {
-  top: 92px;
+  bottom: 16px;
   left: 14px;
   display: flex;
   flex-direction: column;
@@ -857,6 +857,10 @@ a.track-fusion-axis__cite { color: var(--accent); }
   border-radius: 12px;
   background: rgba(2, 9, 8, .72);
   backdrop-filter: blur(7px);
+}
+/* Lift the legend above the timeline scrubber when it is open (bottom-left too). */
+.globe-hud--legend--raised {
+  bottom: 84px;
 }
 .globe-hud--legend__title {
   font: 800 9.5px/1.4 var(--mono);
