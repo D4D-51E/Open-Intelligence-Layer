@@ -471,7 +471,7 @@ body {
 .live-track-tabs {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   padding: 8px;
   border-bottom: 1px solid rgba(125, 249, 255, .1);
@@ -644,6 +644,29 @@ body {
 .live-track-row--ship.is-active {
   background: rgba(103, 232, 249, .12);
 }
+
+/* Claim verification (신뢰성 분석) tab */
+.claim-verify { display: flex; flex-direction: column; gap: 8px; }
+.claim-verdict-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.claim-verdict-cell { text-align: center; border: 1px solid; border-radius: var(--radius-sm); padding: 5px 2px; }
+.claim-verdict-cell strong { display: block; font-size: 15px; font-weight: 800; line-height: 1; }
+.claim-verdict-cell span { font-size: 8.5px; letter-spacing: .04em; }
+.claim-list { display: flex; flex-direction: column; }
+.claim-row { padding: 9px 2px; border-top: 1px solid rgba(138, 255, 224, .07); display: flex; flex-direction: column; gap: 5px; }
+.claim-row:first-child { border-top: 0; }
+.claim-row__head { display: flex; align-items: center; gap: 7px; }
+.claim-badge { font: 800 9px/1 var(--mono); padding: 2px 6px; border-radius: 999px; border: 1px solid; letter-spacing: .04em; flex: 0 0 auto; }
+.claim-place { font-size: 11px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.claim-channel { margin-left: auto; font-size: 9.5px; color: var(--muted); flex: 0 0 auto; }
+.claim-text { font-size: 11px; line-height: 1.45; color: var(--ink); }
+.claim-conf { display: flex; align-items: center; gap: 7px; }
+.claim-conf__bar { flex: 1 1 auto; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.claim-conf__bar i { display: block; height: 100%; border-radius: 3px; }
+.claim-conf__pct { font: 800 9px/1 var(--mono); flex: 0 0 auto; }
+.claim-ledger { display: flex; flex-wrap: wrap; gap: 4px; }
+.claim-chip { font: 700 8px/1.3 var(--mono); padding: 2px 5px; border-radius: 4px; background: rgba(255, 255, 255, .06); }
+.claim-link { font-size: 9.5px; color: var(--hud-cyan); display: inline-flex; align-items: center; gap: 3px; }
+.claim-verify__note { display: block; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 9px; line-height: 1.5; color: var(--muted); }
 .live-track-pane__head--sub {
   margin-top: 14px;
   padding-top: 10px;

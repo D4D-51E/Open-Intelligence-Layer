@@ -1,6 +1,7 @@
-import { Clock, ExternalLink, Layers, Plane, Radio, ShieldAlert, Ship } from 'lucide-react';
+import { Clock, ExternalLink, Layers, Plane, Radio, ShieldAlert, ShieldCheck, Ship } from 'lucide-react';
 import { useState } from 'react';
 import type { Citation, FusionEvent, ShipTrack, TimelineEvent, Track } from '../lib/types';
+import { VERDICT_COLOR, type AssessedClaim, type Verdict } from '../lib/claimVerify';
 import type { TrackFusionAxis, TrackFusionContext } from '../lib/trackFusion';
 import type { AircraftIdentity } from '../lib/aircraftIdentity';
 import type { AirspaceKind, AirspaceMatch } from '../lib/noticeAirspace';
@@ -8,7 +9,7 @@ import { vesselTypeLabel } from '../lib/display';
 import { safeExternalUrl } from '../lib/safeLinks';
 import { Timeline } from './Timeline';
 
-type LiveTrackTab = 'tracks' | 'fusion' | 'history';
+type LiveTrackTab = 'tracks' | 'fusion' | 'history' | 'verify';
 
 type LiveTrackPanelProps = {
   regionName: string;
@@ -24,6 +25,7 @@ type LiveTrackPanelProps = {
   ships: ShipTrack[];
   selectedShipId?: string;
   onSelectShip: (shipId: string) => void;
+  claims: AssessedClaim[];
 };
 
 const airspaceKindLabels: Record<AirspaceKind, string> = {
@@ -362,6 +364,54 @@ function FusionSummaryList({ fusionEvents }: { fusionEvents: FusionEvent[] }) {
   );
 }
 
+const VERDICT_ORDER: Verdict[] = ['TRUE', 'LIKELY', 'NOT LIKELY', 'FALSE'];
+const VERDICT_LABEL: Record<Verdict, string> = { TRUE: '확인', LIKELY: '가능성', 'NOT LIKELY': '미확인', FALSE: '허위' };
+
+function ClaimVerifyList({ claims }: { claims: AssessedClaim[] }) {
+  if (claims.length === 0) {
+    return <p className="live-track-empty">지오로케이트 가능한 텔레그램 주장이 아직 없습니다. 공개 채널 피드가 수집되면 표시됩니다. 합성 데이터는 만들지 않습니다.</p>;
+  }
+  const counts = VERDICT_ORDER.reduce((acc, v) => { acc[v] = claims.filter((c) => c.verdict === v).length; return acc; }, {} as Record<Verdict, number>);
+  return (
+    <div className="claim-verify">
+      <div className="claim-verdict-summary">
+        {VERDICT_ORDER.map((v) => (
+          <div key={v} className="claim-verdict-cell" style={{ color: VERDICT_COLOR[v], borderColor: `${VERDICT_COLOR[v]}55`, background: `${VERDICT_COLOR[v]}18` }}>
+            <strong>{counts[v]}</strong>
+            <span>{VERDICT_LABEL[v]}</span>
+          </div>
+        ))}
+      </div>
+      <div className="claim-list">
+        {claims.map((c) => {
+          const safeUrl = c.url ? safeExternalUrl(c.url) : null;
+          return (
+            <article key={c.key} className="claim-row">
+              <div className="claim-row__head">
+                <span className="claim-badge" style={{ color: VERDICT_COLOR[c.verdict], borderColor: VERDICT_COLOR[c.verdict], background: `${VERDICT_COLOR[c.verdict]}22` }}>{VERDICT_LABEL[c.verdict]}</span>
+                <span className="claim-place" style={{ color: c.color }}>{c.place}</span>
+                <span className="claim-channel">{c.channel}</span>
+              </div>
+              <p className="claim-text">{c.text.slice(0, 180)}</p>
+              <div className="claim-conf">
+                <span className="claim-conf__bar"><i style={{ width: `${c.confidence}%`, background: VERDICT_COLOR[c.verdict] }} /></span>
+                <span className="claim-conf__pct" style={{ color: VERDICT_COLOR[c.verdict] }}>{c.confidence}%</span>
+              </div>
+              <div className="claim-ledger">
+                {c.ledger.map((l, i) => (
+                  <span key={i} className="claim-chip" style={{ color: l.points > 0 ? VERDICT_COLOR[c.verdict] : 'var(--muted)' }}>{l.label}{l.points > 0 ? ` +${l.points}` : ''}</span>
+                ))}
+              </div>
+              {safeUrl ? <a className="claim-link" href={safeUrl} target="_blank" rel="noreferrer">원문 열기 <ExternalLink size={10} /></a> : null}
+            </article>
+          );
+        })}
+      </div>
+      <small className="claim-verify__note">가중 증거 점수(0–100). 확인 = ≥2개 독립 근거(열적·교차출처) · 가능성 = 단일/부분 · 미확인 = 미교차(취재 공백일 수 있음) · 허위 = 강한 주장인데 예상 신호 부재. 공개 텔레그램 × NASA FIRMS 열적 × 교차출처. 비표적화.</small>
+    </div>
+  );
+}
+
 export function LiveTrackPanel({
   regionName,
   tracks,
@@ -376,6 +426,7 @@ export function LiveTrackPanel({
   ships,
   selectedShipId,
   onSelectShip,
+  claims,
 }: LiveTrackPanelProps) {
   const [tab, setTab] = useState<LiveTrackTab>('tracks');
   const selectedTrack = tracks.find((track) => track.id === selectedTrackId);
@@ -408,6 +459,15 @@ export function LiveTrackPanel({
           onClick={() => setTab('history')}
         >
           <Clock size={13} /> 이력<span>{timeline.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'verify'}
+          className={tab === 'verify' ? 'is-active' : ''}
+          onClick={() => setTab('verify')}
+        >
+          <ShieldCheck size={13} /> 검증<span>{claims.length}</span>
         </button>
       </div>
 
@@ -447,6 +507,16 @@ export function LiveTrackPanel({
               title="융합 이벤트 이력"
               emptyMessage="현재 표시할 이벤트가 없습니다."
             />
+          </div>
+        ) : null}
+
+        {tab === 'verify' ? (
+          <div className="live-track-pane">
+            <div className="live-track-pane__head">
+              <p className="eyebrow"><ShieldCheck size={12} /> Claim Verification · 텔레그램 OSINT</p>
+              <span className="pill">신뢰성</span>
+            </div>
+            <ClaimVerifyList claims={claims} />
           </div>
         ) : null}
       </div>

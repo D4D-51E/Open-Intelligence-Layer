@@ -58,6 +58,7 @@ function renderPanel(overrides: Partial<Parameters<typeof LiveTrackPanel>[0]> = 
       activeAirspace={[]}
       ships={[]}
       onSelectShip={onSelectShip}
+      claims={[]}
       {...overrides}
     />,
   );

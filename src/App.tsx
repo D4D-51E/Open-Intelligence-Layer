@@ -17,6 +17,8 @@ import { fetchHistoryTracks } from './lib/historyApi';
 import { fetchVesselTracks } from './lib/vesselsApi';
 import { vesselTypeLabel } from './lib/display';
 import { fetchOsint, type OsintRow } from './lib/osintApi';
+import { fetchTelegramPosts, type TelegramPost } from './lib/telegramApi';
+import { assessClaims, type AssessedClaim } from './lib/claimVerify';
 import { fetchNotam, type NotamRow } from './lib/notamApi';
 import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, ShipTrack, Track } from './lib/types';
 
@@ -194,6 +196,7 @@ function App() {
   const [showNotam, setShowNotam] = useState(true);
   const [liveOsint, setLiveOsint] = useState<OsintMapEvent[]>([]);
   const [liveNotam, setLiveNotam] = useState<AirspaceNotice[]>([]);
+  const [telegramPosts, setTelegramPosts] = useState<TelegramPost[]>([]);
   const [timelineMode, setTimelineMode] = useState(false);
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const [timelineValue, setTimelineValue] = useState(() => Date.now());
@@ -247,6 +250,12 @@ function App() {
     const withFusion = { ...withLive, fusionEvents, ships: liveVessels.length ? liveVessels : withLive.ships };
     return { ...withFusion, timeline: buildTimelineFromScenario(withFusion) };
   }, [anomalies, liveNotam, liveOsint, liveVessels, mergedScenario, showNotam, showOsint]);
+
+  // Reliability scoring: assess Telegram claims against thermal (FIRMS) + cross-source.
+  const assessedClaims = useMemo<AssessedClaim[]>(
+    () => assessClaims(telegramPosts, scenario.thermalAnomalies ?? [], Date.now()),
+    [telegramPosts, scenario.thermalAnomalies],
+  );
 
   const selectedTrack = useMemo(() => scenario.tracks.find((t) => t.id === selectedTrackId), [scenario.tracks, selectedTrackId]);
   const fusionContext = useMemo(
@@ -463,6 +472,20 @@ function App() {
     return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
   }, []);
 
+  // Telegram OSINT feed (public t.me channels via /api/telegram), refreshed periodically.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function') return undefined;
+    let cancelled = false;
+    const controller = new AbortController();
+    const load = async () => {
+      const posts = await fetchTelegramPosts(controller.signal);
+      if (!cancelled) setTelegramPosts(posts);
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 3 * 60 * 1000);
+    return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
+  }, []);
+
   // Live NOTAM circles (Neon /api/notam), by the current viewport bbox.
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.fetch !== 'function') return undefined;
@@ -584,6 +607,7 @@ function App() {
           ships={scenario.ships}
           selectedShipId={selectedShipId}
           onSelectShip={handleSelectShip}
+          claims={assessedClaims}
         />
       </aside>
 
