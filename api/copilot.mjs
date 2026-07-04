@@ -38,10 +38,17 @@ export default async function handler(req, res) {
     const mode = body?.mode === 'anomaly' ? 'anomaly' : 'summary';
     const query = String(body?.query ?? '').slice(0, 500);
     const context = body?.context ?? {};
+    // Prior conversation turns for multi-turn continuity (bounded to keep tokens sane).
+    const history = Array.isArray(body?.history)
+      ? body.history
+          .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+          .slice(-8)
+          .map((m) => ({ role: m.role, content: String(m.content).slice(0, 2000) }))
+      : [];
     const system = mode === 'anomaly' ? SYSTEM_ANOMALY : SYSTEM_SUMMARY;
     const userContent = mode === 'anomaly'
       ? `현재 상황 데이터(JSON):\n${JSON.stringify(context, null, 2)}\n\n이상징후 분석을 지금 작성하세요.`
-      : `지역 상황 데이터(JSON):\n${JSON.stringify(context, null, 2)}\n\n질문: ${query || '현재 지역 상황을 요약해줘'}\n\n답변을 지금 작성하세요.`;
+      : `현재 지역 상황 데이터(JSON):\n${JSON.stringify(context, null, 2)}\n\n질문: ${query || '현재 지역 상황을 요약해줘'}\n\n(이전 대화 맥락이 있으면 이어서) 답변을 지금 작성하세요.`;
 
     const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -51,7 +58,7 @@ export default async function handler(req, res) {
         model: MODEL,
         temperature: 0.3,
         max_tokens: 650,
-        messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }],
+        messages: [{ role: 'system', content: system }, ...history, { role: 'user', content: userContent }],
       }),
     });
     if (!upstream.ok) {

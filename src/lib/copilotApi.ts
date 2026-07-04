@@ -4,19 +4,22 @@
 
 export type CopilotMode = 'summary' | 'anomaly';
 
+export type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
 export type CopilotResult = { ok: boolean; text?: string; reason?: string; message?: string };
 
 export async function askCopilot(
   mode: CopilotMode,
   context: unknown,
   query?: string,
+  history: ChatMessage[] = [],
   signal?: AbortSignal,
 ): Promise<CopilotResult> {
   try {
     const res = await fetch('/api/copilot', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode, query, context }),
+      body: JSON.stringify({ mode, query, context, history }),
       signal,
     });
     if (!res.ok) return { ok: false, reason: 'http', message: `HTTP ${res.status}` };

@@ -25,7 +25,6 @@ describe('AirMaven fullscreen globe app', () => {
     render(<App />);
 
     expect(screen.getByRole('main', { name: /실시간 항적 글로브/i })).toBeInTheDocument();
-    expect(screen.getByText('AirMaven')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /mocked globe/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /유형/ })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /최소 고도/ })).toBeInTheDocument();

@@ -205,7 +205,6 @@ function App() {
   const viewportRef = useRef<Viewport | null>(null);
 
   const regionId = useMemo<RegionId>(() => (viewport ? nearestRegionId(viewport.center) : defaultRegionId), [viewport]);
-  const strategy = viewport ? fetchStrategyForZoom(viewport.zoom) : 'global-mil';
   const baseScenario = useMemo(() => getScenario(regionId), [regionId]);
 
   const sourceTracks = timelineMode ? historyTracks : viewportTracks;
@@ -532,8 +531,6 @@ function App() {
     return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
   }, [viewport]);
 
-  const zoomModeLabel = strategy === 'global-mil' ? '전세계 군용' : '뷰포트 상세';
-  const trackStatusLabel = trackLoadState === 'ready' ? '수신' : trackLoadState === 'unavailable' ? '사용 불가' : '수집 중';
 
   return (
     <main className="globe-shell" aria-label="AirMaven 실시간 항적 글로브">
@@ -562,13 +559,6 @@ function App() {
         />
       </div>
 
-      <div className="globe-hud globe-hud--topleft">
-        <strong>AirMaven</strong>
-        <span>{zoomModeLabel} · 항적 {scenario.tracks.length}{militaryCount > 0 ? ` · 군용 ${militaryCount}` : ''}</span>
-        <span className={`globe-hud__status globe-hud__status--${trackLoadState}`}>
-          adsb.lol {trackStatusLabel}{trackLastErrorAt ? ' · 오류' : ''}
-        </span>
-      </div>
 
       <div className="globe-hud globe-hud--topright" aria-label="필터">
         <label>

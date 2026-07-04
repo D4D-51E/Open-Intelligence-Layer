@@ -880,16 +880,6 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
         currentRegionId={props.region.id}
         onRegionSelect={props.onRegionSelect}
       />
-      <div className="globe-readout globe-readout--left" aria-hidden="true">
-        <strong>MAPLIBRE GLOBE</strong>
-        <span>OSM VECTOR · LAT {props.region.center[0].toFixed(2)} · LON {props.region.center[1].toFixed(2)}</span>
-      </div>
-      <div className="globe-readout globe-readout--right" aria-hidden="true">
-        <span>TRK {props.tracks.length}</span>
-        <span>SHIP {props.ships.length}</span>
-        <span>OSINT {props.osintEvents.length}</span>
-        <span>SAT {props.satellites.length}</span>
-      </div>
       {props.referenceLines.length > 0 && (
         <div className="map-reference-note">
           <strong>출처 기반 참고 오버레이</strong>
