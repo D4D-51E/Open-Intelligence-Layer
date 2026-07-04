@@ -8,6 +8,7 @@
 // DATABASE_URL must never reach the browser. See README.md for deploy steps.
 import WebSocket from 'ws';
 import { neon } from '@neondatabase/serverless';
+import { startAircraftCollector } from './aircraft.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const API_KEY = process.env.AISSTREAM_API_KEY;
@@ -157,6 +158,11 @@ process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
 connect();
+// Always-on aircraft (ADS-B) collection into track_observations, alongside the AIS stream.
+// Set COLLECT_AIRCRAFT=0 to disable (e.g. if run as a separate service).
+if (process.env.COLLECT_AIRCRAFT !== '0') {
+  startAircraftCollector(sql, { log: console.log });
+}
 setInterval(() => { void flush(); }, FLUSH_MS);
 setInterval(() => { void prune(); }, 3_600_000);
 setInterval(() => { console.log(`[stat] tracked=${latest.size} seen=${seen} written=${written}`); }, 60_000);
