@@ -11,7 +11,7 @@ vi.mock('./components/SituationMap', () => ({
   )
 }));
 
-describe('AirMaven Lite app', () => {
+describe('AirMaven Verify app', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('live cache unavailable in unit test'))));
   });
@@ -20,19 +20,20 @@ describe('AirMaven Lite app', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders the core MVP slices with citations and caveats', async () => {
+  it('renders the verify pivot with claim queue, verdict, citations, and caveats', async () => {
     render(<App />);
 
-    expect(screen.getByRole('main', { name: /공중 ISR 융합 상황판/i })).toBeInTheDocument();
+    expect(screen.getByRole('main', { name: /AirMaven Verify OSINT 검증 상황판/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /^관심지역$/ })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /^데이터$/ })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: /^화면$/ })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /mocked situation map/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /확인 신호/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /주장 검증 대기열/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /F-35 격추 주장/i })).toBeInTheDocument();
+    expect(screen.getByText(/False \/ Deceptive/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/공개 ADS-B 부재|무료 공개 위성/).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: /수집 상태/i })).toBeInTheDocument();
-    expect(screen.queryByText(/D4D T2 예비 프로토타입/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/AirMaven Lite/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/의사결정 보조 전용/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /데모/i })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/스냅샷 사용 불가/i)).toBeInTheDocument());
   });
@@ -44,8 +45,8 @@ describe('AirMaven Lite app', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: /^관심지역$/ }), 'west-sea-nll');
 
     expect(screen.getByRole('heading', { name: /^서해\/NLL 인근$/i })).toBeInTheDocument();
-    expect(screen.queryByText(/GRAY09/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/표시 항적 0\/0/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/서해 폐쇄 주장/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('tab', { name: /주장 2/i })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/스냅샷 사용 불가/i)).toBeInTheDocument());
   });
 
@@ -55,26 +56,19 @@ describe('AirMaven Lite app', () => {
 
     await user.selectOptions(screen.getByRole('combobox', { name: /^화면$/ }), 'narrative');
 
-    expect(screen.getByRole('heading', { name: /무료\/공개 API 계획/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /검증 소스 연계 매트릭스/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /주장 검증 대기열/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /근거 확인 이력/i })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/스냅샷 사용 불가/i)).toBeInTheDocument());
   });
 
-  it('applies natural-language presets and analyst review state in the fusion copilot', async () => {
+  it('lets the analyst select another claim and updates the verification verdict panel', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.clear(screen.getByRole('textbox', { name: /자연어 질의/i }));
-    await user.type(screen.getByRole('textbox', { name: /자연어 질의/i }), '서해 NLL 데이터 공백과 출처 품질을 설명해줘');
-    await user.click(screen.getByRole('button', { name: /적용/i }));
+    await user.click(screen.getByRole('button', { name: /KADIZ 대량 진입/i }));
 
-    expect(screen.getByRole('heading', { name: /^서해\/NLL 인근$/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/합성 이벤트는 만들지 않습니다|융합 상황 요약/i).length).toBeGreaterThan(0);
-
-    const reviewButtons = screen.queryAllByRole('button', { name: /^검토$/ });
-    if (reviewButtons.length > 0) {
-      await user.click(reviewButtons[0]);
-      expect(screen.getAllByText(/검토 필요/i).length).toBeGreaterThan(0);
-    }
+    expect(screen.getByRole('heading', { name: /KADIZ 대량 진입/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/공식 NOTAM 근거 없음|직접적인 공개 항적 증거 없음/).length).toBeGreaterThan(0);
   });
-
 });

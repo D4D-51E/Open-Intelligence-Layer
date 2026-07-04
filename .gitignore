@@ -14,3 +14,4 @@ output/playwright/
 test-results/
 .wrangler/
 *.tsbuildinfo
+StealthMole_API_MANUAL*.md

@@ -80,6 +80,11 @@ export type OsintItem = {
   summary: string;
   tags: string[];
   confidence: number;
+  clusterId?: string;
+  clusterSize?: number;
+  clusterSpanMinutes?: number;
+  publisherCount?: number;
+  clusterHeadline?: string;
 };
 
 export type SatellitePass = {
@@ -155,7 +160,7 @@ export type AirspaceContext = {
 export type OsintMapEvent = {
   id: string;
   regionId: RegionId;
-  source: OsintItem['source'];
+  source: OsintItem['source'] | 'claim-review-cache' | 'nasa-firms-match' | 'osint-cluster-review';
   title: string;
   lat: number;
   lon: number;
@@ -165,6 +170,35 @@ export type OsintMapEvent = {
   domain?: string;
   url?: string;
   tags: string[];
+};
+
+export type SatelliteScene = {
+  id: string;
+  regionId: RegionId;
+  source: 'copernicus-stac-cache' | 'landsat-scene-link' | 'commercial-imagery-link';
+  provider: string;
+  platform: string;
+  productType?: string;
+  observedAt: string;
+  cloudCoverPct?: number;
+  bbox?: [number, number, number, number];
+  url?: string;
+  summary: string;
+};
+
+export type ThermalAnomaly = {
+  id: string;
+  regionId: RegionId;
+  source: 'nasa-firms-cache';
+  provider: 'NASA FIRMS';
+  lat: number;
+  lon: number;
+  observedAt: string;
+  confidence?: number;
+  brightnessKelvin?: number;
+  frpMw?: number;
+  satellite?: string;
+  url?: string;
 };
 
 export type WatchZone = {
@@ -192,7 +226,7 @@ export type TimelineEvent = {
   id: string;
   regionId: RegionId;
   time: string;
-  type: 'track' | 'ship' | 'weather' | 'osint' | 'osint-event' | 'satellite' | 'airport' | 'route' | 'notice' | 'airspace' | 'fusion' | 'anomaly';
+  type: 'track' | 'ship' | 'weather' | 'osint' | 'osint-event' | 'satellite' | 'satellite-scene' | 'thermal' | 'airport' | 'route' | 'notice' | 'airspace' | 'fusion' | 'anomaly' | 'claim' | 'evidence';
   title: string;
   description: string;
   severity: Severity;
@@ -252,6 +286,91 @@ export type FusionEvent = {
   safetyNote: string;
 };
 
+export type ClaimType = 'aircraft_shootdown' | 'base_strike' | 'airspace_closure' | 'drone_loss' | 'satellite_claim' | 'force_movement';
+
+export type VerificationVerdictLabel =
+  | 'confirmed'
+  | 'likely_true'
+  | 'plausible_unverified'
+  | 'inconclusive'
+  | 'likely_false'
+  | 'false';
+
+export type EvidenceCategory =
+  | 'official'
+  | 'news'
+  | 'factcheck'
+  | 'track'
+  | 'satellite_scene'
+  | 'orbital_pass'
+  | 'thermal'
+  | 'weather'
+  | 'notam'
+  | 'airspace'
+  | 'media_forensics'
+  | 'source_gap'
+  | 'commercial_imagery';
+
+export type EvidenceStance = 'supports' | 'contradicts' | 'gap' | 'context';
+
+export type VerificationClaim = {
+  id: string;
+  regionId: RegionId;
+  title: string;
+  shortTitle: string;
+  claimType: ClaimType;
+  actor: string;
+  targetAsset?: string;
+  claimedAt: string;
+  createdAt: string;
+  claimedLocation: {
+    name: string;
+    lat: number;
+    lon: number;
+  };
+  timeWindowStart: string;
+  timeWindowEnd: string;
+  geoRadiusKm: number;
+  geoBufferKm?: number;
+  claimSummary: string;
+  sourceUrls: string[];
+  keywords: string[];
+  priority: Severity;
+};
+
+export type EvidenceItem = {
+  id: string;
+  claimId: string;
+  category: EvidenceCategory;
+  stance: EvidenceStance;
+  title: string;
+  summary: string;
+  source: string;
+  confidence: number;
+  observedAt?: string;
+  url?: string;
+  relatedIds: string[];
+  caveat?: string;
+};
+
+export type VerificationVerdict = {
+  label: VerificationVerdictLabel;
+  confidence: number;
+  summary: string;
+  supportingEvidenceIds: string[];
+  contradictingEvidenceIds: string[];
+  gapEvidenceIds: string[];
+  caveats: string[];
+  nextChecks: string[];
+};
+
+export type VerificationCase = {
+  claim: VerificationClaim;
+  evidence: EvidenceItem[];
+  verdict: VerificationVerdict;
+  derivedMapEvents?: OsintMapEvent[];
+};
+
 export type Briefing = {
   headline: string;
   situationSummary: string;
@@ -270,6 +389,8 @@ export type Scenario = {
   osint: OsintItem[];
   osintEvents: OsintMapEvent[];
   satellites: SatellitePass[];
+  satelliteScenes?: SatelliteScene[];
+  thermalAnomalies?: ThermalAnomaly[];
   airports: AirportContext[];
   airRoutes: AirRoute[];
   notices: AirspaceNotice[];

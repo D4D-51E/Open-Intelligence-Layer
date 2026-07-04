@@ -16,7 +16,8 @@
     "live:loop": "node scripts/live-data-loop.mjs",
     "dev:live": "node scripts/dev-live.mjs",
     "dev:cloudflare": "npm run build && npx wrangler dev --test-scheduled",
-    "deploy:cloudflare": "npm run build && npx wrangler deploy"
+    "deploy:cloudflare": "npm run build && npx wrangler deploy",
+    "test:stealthmole": "node scripts/stealthmole-smoke-test.mjs"
   },
   "dependencies": {
     "@turf/turf": "^7.2.0",

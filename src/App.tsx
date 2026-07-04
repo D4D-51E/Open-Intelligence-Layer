@@ -1,32 +1,29 @@
 import 'leaflet/dist/leaflet.css';
-import { Activity, CloudSun, Database, RadioTower, Satellite } from 'lucide-react';
+import { Activity, Database, FileSearch, RadioTower, Satellite } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SituationMap } from './components/SituationMap';
 import { MetricCard } from './components/MetricCard';
 import { Timeline } from './components/Timeline';
-import { AnomalyPanel } from './components/AnomalyPanel';
-import { BriefingPanel } from './components/BriefingPanel';
-import { FusionCopilotPanel, type QueryPreset } from './components/FusionCopilotPanel';
+import { ClaimQueuePanel } from './components/ClaimQueuePanel';
+import { VerificationPanel } from './components/VerificationPanel';
 import { IngestLogPanel, type IngestLogEntry } from './components/IngestLogPanel';
 import { detectAnomalies } from './lib/anomaly';
-import { generateBriefing } from './lib/briefing';
-import { buildFusionEvents } from './lib/fusion';
-import { dataSources, getScenario } from './lib/baselineData';
+import { getScenario } from './lib/baselineData';
 import { buildTimelineFromScenario, mergeLiveScenario, type LiveScenarioCache } from './lib/liveData';
 import { liveTrackHistoryForRegion, mergeLiveTrackHistory, type LiveTrackHistory } from './lib/liveTrackHistory';
-import { demoQueries, parseAnalystQuery } from './lib/query';
 import { defaultRegionId, isRegionId, regions } from './lib/regions';
 import { safeExternalUrl } from './lib/safeLinks';
 import { sourceStatusIsOperational, sourceStatusLabel } from './lib/display';
-import type { Anomaly, FusionReviewStatus, RegionId, TimelineEvent, Track } from './lib/types';
+import { buildClaimMapEvents, buildVerificationCases, buildVerificationTimeline } from './lib/verify';
+import { implementedSourceCount, osintSourceCatalog, sourceStatusForCatalogEntry } from './lib/osintSources';
+import type { RegionId, Track, VerificationCase, VerificationVerdictLabel } from './lib/types';
 
 type BasemapMode = 'globe' | 'hud-globe' | 'offline' | 'live';
 type ViewMode = 'ops' | 'narrative';
-type OpsReviewTab = 'queue' | 'briefing' | 'history';
+type OpsReviewTab = 'claims' | 'briefing' | 'history';
 type AircraftTypeFilter = 'all' | Track['platformType'];
 const livePollIntervalMs = 30_000;
 const maxIngestLogEntries = 60;
-const defaultAnalystQuery = demoQueries[2];
 const aircraftTypeOptions: Array<{ value: AircraftTypeFilter; label: string }> = [
   { value: 'all', label: '전체' },
   { value: 'commercial', label: '민항' },
@@ -45,12 +42,6 @@ const speedFilterOptions = [
   { value: 150, label: '150m/s+' },
   { value: 220, label: '220m/s+' },
 ];
-
-const queryPresets: QueryPreset[] = demoQueries.map((query, index) => ({
-  id: `preset-${index + 1}`,
-  label: ['Global', '대만해협', '수도권', '남중국해', '서해 NLL'][index] ?? `질의 ${index + 1}`,
-  query,
-}));
 
 function initialBasemapMode(): BasemapMode {
   if (typeof window === 'undefined') return 'globe';
@@ -119,40 +110,56 @@ function primarySentence(value: string) {
   return match?.[0].trim() || value;
 }
 
-function anomalyObservedAt(anomaly: Anomaly, fallbackTime: string) {
-  const timestamps = anomaly.citations
-    .map((cite) => cite.observedAt)
-    .filter((value): value is string => Boolean(value))
-    .map((value) => new Date(value).getTime())
-    .filter(Number.isFinite);
-  if (!timestamps.length) return fallbackTime;
-  return new Date(Math.max(...timestamps)).toISOString();
+const verdictShortLabels: Record<VerificationVerdictLabel, string> = {
+  confirmed: '확인',
+  likely_true: '사실↑',
+  plausible_unverified: '가능',
+  inconclusive: '보류',
+  likely_false: '허위↑',
+  false: '허위',
+};
+
+function verdictLabel(value: VerificationVerdictLabel | undefined) {
+  return value ? verdictShortLabels[value] : '-';
 }
 
-function buildAnomalyTimeline(anomalies: Anomaly[], regionId: RegionId, fallbackTime: string): TimelineEvent[] {
-  return anomalies
-    .map((anomaly) => ({
-      id: `review-${anomaly.id}`,
-      regionId,
-      time: anomalyObservedAt(anomaly, fallbackTime),
-      type: 'anomaly' as const,
-      title: anomaly.title,
-      description: `신뢰도 ${Math.round(anomaly.confidence * 100)}% · 근거 ${anomaly.citations.length}개 · 관련 항적 ${anomaly.relatedTrackIds.length}개`,
-      severity: anomaly.severity,
-      relatedIds: [...anomaly.relatedTrackIds, ...anomaly.relatedOsintIds],
-    }))
-    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+function evidenceCountsFor(verificationCase: VerificationCase | undefined) {
+  const evidence = verificationCase?.evidence ?? [];
+  return {
+    supports: evidence.filter((item) => item.stance === 'supports').length,
+    contradicts: evidence.filter((item) => item.stance === 'contradicts').length,
+    gaps: evidence.filter((item) => item.stance === 'gap').length,
+    total: evidence.length,
+  };
 }
 
-function scenarioReferenceTime(scenario: { weather: { observedAt: string } | null; timeline: TimelineEvent[] }) {
-  return scenario.weather?.observedAt ?? scenario.timeline.at(-1)?.time ?? new Date().toISOString();
+function verificationBriefingLists(verificationCase: VerificationCase | undefined) {
+  if (!verificationCase) return {
+    findings: ['선택된 검증 주장이 없습니다.'],
+    nextChecks: ['Claim Queue에서 주장을 선택하세요.'],
+  };
+  const findings = [
+    ...verificationCase.evidence.filter((item) => item.stance === 'contradicts').slice(0, 2).map((item) => `반박: ${item.title}`),
+    ...verificationCase.evidence.filter((item) => item.stance === 'supports').slice(0, 2).map((item) => `지지: ${item.title}`),
+    ...verificationCase.evidence.filter((item) => item.stance === 'gap').slice(0, 2).map((item) => `공백: ${item.title}`),
+  ];
+  return {
+    findings: findings.length ? findings : [verificationCase.verdict.summary],
+    nextChecks: verificationCase.verdict.nextChecks,
+  };
+}
+
+function sourceCatalogStatusLabel(value: ReturnType<typeof sourceStatusForCatalogEntry>) {
+  if (value === 'manual') return '수동 등록';
+  if (value === 'commercial-ready') return '유료/파트너십';
+  return sourceStatusLabel(value);
 }
 
 function App() {
   const [regionId, setRegionId] = useState<RegionId>(initialRegionId);
   const [basemapMode, setBasemapMode] = useState<BasemapMode>(initialBasemapMode);
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
-  const [opsReviewTab, setOpsReviewTab] = useState<OpsReviewTab>('queue');
+  const [opsReviewTab, setOpsReviewTab] = useState<OpsReviewTab>('claims');
   const [liveCache, setLiveCache] = useState<LiveScenarioCache | null>(null);
   const [liveLoadState, setLiveLoadState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [liveLastCheckedAt, setLiveLastCheckedAt] = useState<string | null>(null);
@@ -162,11 +169,8 @@ function App() {
   const [aircraftTypeFilter, setAircraftTypeFilter] = useState<AircraftTypeFilter>('all');
   const [minimumAltitudeM, setMinimumAltitudeM] = useState(0);
   const [minimumSpeedMs, setMinimumSpeedMs] = useState(0);
-  const [queryText, setQueryText] = useState(defaultAnalystQuery);
-  const [activeQuery, setActiveQuery] = useState(defaultAnalystQuery);
-  const [fusionReviewStates, setFusionReviewStates] = useState<Record<string, FusionReviewStatus>>({});
+  const [activeClaimId, setActiveClaimId] = useState<string | undefined>();
   const liveCacheRef = useRef<LiveScenarioCache | null>(null);
-  const queryIntent = useMemo(() => parseAnalystQuery(activeQuery, regionId), [activeQuery, regionId]);
   const baseScenario = useMemo(() => getScenario(regionId), [regionId]);
   const mergedScenario = useMemo(() => {
     const liveRegion = liveCache?.regions?.[regionId];
@@ -182,48 +186,23 @@ function App() {
     }),
     [aircraftTypeFilter, mergedScenario.tracks, minimumAltitudeM, minimumSpeedMs],
   );
-  const scenarioBeforeFusion = useMemo(() => {
+  const scenario = useMemo(() => {
     const nextScenario = { ...mergedScenario, tracks: filteredTracks, fusionEvents: [] };
     return {
       ...nextScenario,
       timeline: buildTimelineFromScenario(nextScenario),
     };
   }, [filteredTracks, mergedScenario]);
-  const anomalies = useMemo(() => detectAnomalies(scenarioBeforeFusion), [scenarioBeforeFusion]);
-  const fusionEvents = useMemo(
-    () => buildFusionEvents(scenarioBeforeFusion, anomalies, queryIntent),
-    [scenarioBeforeFusion, anomalies, queryIntent],
+  const anomalies = useMemo(() => detectAnomalies(scenario), [scenario]);
+  const verificationCases = useMemo(() => buildVerificationCases(scenario), [scenario]);
+  const activeVerificationCase = useMemo(
+    () => verificationCases.find((item) => item.claim.id === activeClaimId) ?? verificationCases[0],
+    [activeClaimId, verificationCases],
   );
-  const scenario = useMemo(() => {
-    const nextScenario = { ...scenarioBeforeFusion, fusionEvents };
-    return {
-      ...nextScenario,
-      timeline: buildTimelineFromScenario(nextScenario),
-    };
-  }, [fusionEvents, scenarioBeforeFusion]);
-  const briefing = useMemo(() => generateBriefing(scenario, anomalies), [scenario, anomalies]);
-  const timeline = useMemo<TimelineEvent[]>(() => [
-    ...scenario.timeline,
-    ...anomalies.map((anomaly) => ({
-      id: `tl-${anomaly.id}`,
-      regionId,
-      time: scenarioReferenceTime(scenario),
-      type: 'anomaly' as const,
-      title: anomaly.title,
-      description: anomaly.description,
-      severity: anomaly.severity,
-      relatedIds: [...anomaly.relatedTrackIds, ...anomaly.relatedOsintIds],
-    })),
-  ].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()), [scenario, anomalies, regionId]);
-  const referenceTime = useMemo(() => scenarioReferenceTime(scenario), [scenario]);
-  const anomalyTimeline = useMemo(
-    () => buildAnomalyTimeline(anomalies, regionId, referenceTime),
-    [anomalies, regionId, referenceTime],
-  );
+  const claimMapEvents = useMemo(() => buildClaimMapEvents(verificationCases), [verificationCases]);
+  const verificationTimeline = useMemo(() => buildVerificationTimeline(verificationCases), [verificationCases]);
 
   const isGlobalRegion = regionId === 'global';
-  const warningCount = anomalies.filter((item) => item.severity === 'warning').length;
-  const watchCount = anomalies.filter((item) => item.severity === 'watch').length;
   const rawTrackCount = mergedScenario.tracks.length;
   const filteredTrackCount = scenario.tracks.length;
   const handleRegionSelect = useCallback((value: RegionId) => {
@@ -232,19 +211,6 @@ function App() {
   const handleRegionChange = (value: string) => {
     if (isRegionId(value)) handleRegionSelect(value);
   };
-  const applyAnalystQuery = useCallback((value: string) => {
-    const nextQuery = value.trim() || demoQueries[0];
-    const nextIntent = parseAnalystQuery(nextQuery, regionId);
-    if (nextIntent.regionId && nextIntent.regionId !== regionId) setRegionId(nextIntent.regionId);
-    setActiveQuery(nextQuery);
-    setQueryText(nextQuery);
-  }, [regionId]);
-  const handleQueryPreset = useCallback((preset: QueryPreset) => {
-    applyAnalystQuery(preset.query);
-  }, [applyAnalystQuery]);
-  const handleFusionReviewChange = useCallback((eventId: string, status: FusionReviewStatus) => {
-    setFusionReviewStates((current) => ({ ...current, [eventId]: status }));
-  }, []);
   const liveRegionStatus = liveCache?.regions?.[regionId]?.sourceStatus;
   const liveSourceReasons = liveCache?.regions?.[regionId]?.sourceReasons;
   const liveSourceUpdatedAt = liveCache?.regions?.[regionId]?.sourceUpdatedAt;
@@ -276,6 +242,14 @@ function App() {
     : scenario.weather
       ? `운량 ${scenario.weather.cloudCoverPct}%, 돌풍 ${scenario.weather.windGustKmh}km/h`
       : 'Open-Meteo 수집 대기';
+  const activeEvidenceCounts = evidenceCountsFor(activeVerificationCase);
+  const verificationBrief = verificationBriefingLists(activeVerificationCase);
+  const sourceCoverageCount = implementedSourceCount(scenario);
+  const verdictTone = activeVerificationCase?.verdict.label === 'false' || activeVerificationCase?.verdict.label === 'likely_false'
+    ? 'warning'
+    : activeVerificationCase?.verdict.label === 'confirmed' || activeVerificationCase?.verdict.label === 'likely_true'
+      ? 'good'
+      : activeVerificationCase ? 'watch' : 'neutral';
   const appendIngestLog = useCallback((level: IngestLogEntry['level'], message: string, at = new Date().toISOString()) => {
     setIngestLogs((current) => [
       { id: `${at}-${level}-${current.length}`, at, level, message },
@@ -347,25 +321,31 @@ function App() {
   const metrics = (
     <section className="metrics-grid">
       <MetricCard
-        label="항적"
-        value={filteredTrackCount}
-        detail={rawTrackCount === filteredTrackCount ? trackDetail : `${trackDetail} · 필터 ${filteredTrackCount}/${rawTrackCount}`}
+        label="검증주장"
+        value={verificationCases.length}
+        detail={activeVerificationCase ? activeVerificationCase.claim.shortTitle : 'Claim Queue 대기'}
+        tone={verificationCases.some((item) => item.claim.priority === 'warning') ? 'watch' : 'neutral'}
+        icon={<Activity size={18} />}
+      />
+      <MetricCard
+        label="현재판정"
+        value={verdictLabel(activeVerificationCase?.verdict.label)}
+        detail={activeVerificationCase ? `신뢰도 ${Math.round(activeVerificationCase.verdict.confidence * 100)}%` : '선택 없음'}
+        tone={verdictTone}
+        icon={<FileSearch size={18} />}
+      />
+      <MetricCard
+        label="관측레이어"
+        value={`${filteredTrackCount}/${scenario.satellites.length}`}
+        detail={`항적/위성 · ${rawTrackCount === filteredTrackCount ? trackDetail : `필터 ${filteredTrackCount}/${rawTrackCount}`} · ${weatherDetail}`}
         tone="neutral"
         icon={<RadioTower size={18} />}
       />
-      <MetricCard label="확인신호" value={`${warningCount}/${watchCount}`} detail="경고 / 관찰" tone={warningCount ? 'warning' : watchCount ? 'watch' : 'good'} icon={<Activity size={18} />} />
       <MetricCard
-        label="기상"
-        value={scenario.weather ? `${scenario.weather.visibilityM.toLocaleString()}m` : '0'}
-        detail={weatherDetail}
-        tone={scenario.weather && scenario.weather.visibilityM < 6000 ? 'watch' : scenario.weather ? 'good' : 'neutral'}
-        icon={<CloudSun size={18} />}
-      />
-      <MetricCard
-        label="궤도/해상"
-        value={`${scenario.satellites.length}/${scenario.ships.length}`}
-        detail={`위성/선박 · FIR ${scenario.airspaceContexts[0]?.icaoCode ?? '-'}`}
-        tone="neutral"
+        label="OSINT소스"
+        value={`${sourceCoverageCount}/${osintSourceCatalog.length}`}
+        detail={`근거 ${activeEvidenceCounts.total} · 지지 ${activeEvidenceCounts.supports} / 반박 ${activeEvidenceCounts.contradicts} / 공백 ${activeEvidenceCounts.gaps}`}
+        tone={activeEvidenceCounts.gaps > activeEvidenceCounts.supports + activeEvidenceCounts.contradicts ? 'watch' : 'neutral'}
         icon={<Satellite size={18} />}
       />
     </section>
@@ -379,7 +359,7 @@ function App() {
           <h2>{scenario.region.shortName}</h2>
         </div>
         <span className="pill pill--dispatch">
-          READY · 항적 {filteredTrackCount}/{rawTrackCount} · OSINT {scenario.osintEvents.length} · 선박 {scenario.ships.length} · 공항 {scenario.airports.length}
+          VERIFY · 주장 {verificationCases.length} · 항적 {filteredTrackCount}/{rawTrackCount} · OSINT {scenario.osintEvents.length + claimMapEvents.length} · 위성장면 {scenario.satelliteScenes?.length ?? 0}
         </span>
       </div>
       <SituationMap
@@ -395,7 +375,7 @@ function App() {
         airRoutes={scenario.airRoutes}
         notices={scenario.notices}
         airspaceContexts={scenario.airspaceContexts}
-        osintEvents={scenario.osintEvents}
+        osintEvents={[...scenario.osintEvents, ...claimMapEvents]}
         anomalies={anomalies}
         basemapMode={basemapMode}
       />
@@ -406,46 +386,32 @@ function App() {
     <section className="panel ops-briefing-panel">
       <div className="panel__header panel__header--row">
         <div>
-          <p className="eyebrow">AI 브리핑</p>
-          <h2>{briefing.headline}</h2>
+          <p className="eyebrow">Verification Brief</p>
+          <h2>{activeVerificationCase?.claim.shortTitle ?? '검증 브리핑'}</h2>
         </div>
-        <span className="pill">검토용</span>
+        <span className="pill">{verdictLabel(activeVerificationCase?.verdict.label)} · 검토용</span>
       </div>
-      <p className="ops-briefing-summary">{primarySentence(briefing.situationSummary)}</p>
+      <p className="ops-briefing-summary">{primarySentence(activeVerificationCase?.verdict.summary ?? '선택된 검증 주장이 없습니다.')}</p>
       <div className="ops-briefing-grid">
         <div>
-          <h3>핵심</h3>
+          <h3>핵심 근거</h3>
           <ul>
-            {briefing.keyFindings.slice(0, 3).map((finding) => <li key={finding}>{finding}</li>)}
+            {verificationBrief.findings.slice(0, 4).map((finding) => <li key={finding}>{finding}</li>)}
           </ul>
         </div>
         <div>
-          <h3>다음</h3>
+          <h3>다음 확인</h3>
           <ul>
-            {briefing.recommendedNextChecks.slice(0, 3).map((check) => <li key={check}>{check}</li>)}
+            {verificationBrief.nextChecks.slice(0, 4).map((check) => <li key={check}>{check}</li>)}
           </ul>
         </div>
       </div>
     </section>
   );
 
-  const fusionPanel = (
-    <FusionCopilotPanel
-      query={queryText}
-      presets={queryPresets}
-      fusionEvents={scenario.fusionEvents}
-      reviewStates={fusionReviewStates}
-      intent={queryIntent}
-      onQueryChange={setQueryText}
-      onRunQuery={() => applyAnalystQuery(queryText)}
-      onPreset={handleQueryPreset}
-      onReviewChange={handleFusionReviewChange}
-    />
-  );
-
   const opsTrackSummary = isGlobalRegion
-    ? `OSINT ${scenario.osintEvents.length} · 위성 ${scenario.satellites.length} · AOI 선택 시 상세`
-    : `표시 항적 ${filteredTrackCount}/${rawTrackCount} · 위성 ${scenario.satellites.length} · 선박 ${scenario.ships.length} · OSINT ${scenario.osintEvents.length}`;
+    ? `주장 ${verificationCases.length} · OSINT ${scenario.osintEvents.length} · 위성 ${scenario.satellites.length} · AOI 선택 시 상세`
+    : `주장 ${verificationCases.length} · 항적 ${filteredTrackCount}/${rawTrackCount} · 위성 ${scenario.satellites.length} · OSINT ${scenario.osintEvents.length}`;
   const opsSnapshotSummary = liveGeneratedAt
     ? `${liveCacheAge} · 출처 ${liveSourceOk}/${liveSourceTotal || '-'}`
     : '스냅샷 대기';
@@ -509,19 +475,19 @@ function App() {
   );
 
   const opsReviewPanel = (
-    <section className="panel ops-review-panel" aria-label="확인 대기, AI 브리핑, 신호 확인 이력">
+    <section className="panel ops-review-panel" aria-label="주장 검증, 검증 브리핑, 근거 이력">
       <div className="ops-review-tabs" role="tablist" aria-label="오른쪽 분석 패널">
         <button
-          id="ops-review-tab-queue"
+          id="ops-review-tab-claims"
           type="button"
           role="tab"
-          aria-selected={opsReviewTab === 'queue'}
-          aria-controls="ops-review-panel-queue"
-          className={opsReviewTab === 'queue' ? 'is-active' : ''}
-          onClick={() => setOpsReviewTab('queue')}
+          aria-selected={opsReviewTab === 'claims'}
+          aria-controls="ops-review-panel-claims"
+          className={opsReviewTab === 'claims' ? 'is-active' : ''}
+          onClick={() => setOpsReviewTab('claims')}
         >
-          확인 대기
-          <span>{anomalies.length + scenario.fusionEvents.length}</span>
+          주장
+          <span>{verificationCases.length}</span>
         </button>
         <button
           id="ops-review-tab-briefing"
@@ -532,8 +498,8 @@ function App() {
           className={opsReviewTab === 'briefing' ? 'is-active' : ''}
           onClick={() => setOpsReviewTab('briefing')}
         >
-          AI 브리핑
-          <span>{briefing.keyFindings.length}</span>
+          검증 브리핑
+          <span>{verificationBrief.findings.length}</span>
         </button>
         <button
           id="ops-review-tab-history"
@@ -544,33 +510,25 @@ function App() {
           className={opsReviewTab === 'history' ? 'is-active' : ''}
           onClick={() => setOpsReviewTab('history')}
         >
-          신호 이력
-          <span>{anomalyTimeline.length}</span>
+          근거 이력
+          <span>{verificationTimeline.length}</span>
         </button>
       </div>
       <div className="ops-review-panel__body">
         <div
-          id="ops-review-panel-queue"
+          id="ops-review-panel-claims"
           role="tabpanel"
-          aria-labelledby="ops-review-tab-queue"
+          aria-labelledby="ops-review-tab-claims"
           className="ops-review-pane ops-review-pane--queue"
-          hidden={opsReviewTab !== 'queue'}
+          hidden={opsReviewTab !== 'claims'}
         >
-          <AnomalyPanel anomalies={anomalies} compact />
-          <FusionCopilotPanel
-            query={queryText}
-            presets={queryPresets}
-            fusionEvents={scenario.fusionEvents}
-            reviewStates={fusionReviewStates}
-            intent={queryIntent}
+          <ClaimQueuePanel
+            cases={verificationCases}
+            activeClaimId={activeVerificationCase?.claim.id}
             compact
-            title="확인 대기"
-            ariaLabel="자연어 질의와 확인 대기"
-            onQueryChange={setQueryText}
-            onRunQuery={() => applyAnalystQuery(queryText)}
-            onPreset={handleQueryPreset}
-            onReviewChange={handleFusionReviewChange}
+            onSelect={setActiveClaimId}
           />
+          <VerificationPanel verificationCase={activeVerificationCase} compact />
         </div>
         <div
           id="ops-review-panel-briefing"
@@ -589,10 +547,10 @@ function App() {
           hidden={opsReviewTab !== 'history'}
         >
           <Timeline
-            events={anomalyTimeline}
-            eyebrow="확인 타임라인"
-            title="신호 확인 이력"
-            emptyMessage="현재 확인 신호가 없습니다."
+            events={verificationTimeline}
+            eyebrow="Evidence Timeline"
+            title="근거 확인 이력"
+            emptyMessage="현재 표시할 검증 근거가 없습니다."
           />
         </div>
       </div>
@@ -600,7 +558,7 @@ function App() {
   );
 
   return (
-    <main aria-label="공중 ISR 융합 상황판" className={`app-shell ${viewMode === 'ops' ? 'app-shell--ops' : ''}`}>
+    <main aria-label="AirMaven Verify OSINT 검증 상황판" className={`app-shell ${viewMode === 'ops' ? 'app-shell--ops' : ''}`}>
       {viewMode === 'ops' ? opsCommandBar : (
         <>
           <section className="control-strip">
@@ -665,8 +623,8 @@ function App() {
             </div>
             <p className="filter-strip__summary">
               {isGlobalRegion
-                ? `전세계 OSINT 포인트 ${scenario.osintEvents.length} · 위성 ${scenario.satellites.length} · 상세 항적/선박은 AOI에서 조회`
-                : `표시 항적 ${filteredTrackCount}/${rawTrackCount} · 위성 ${scenario.satellites.length} · 선박 ${scenario.ships.length} · OSINT 포인트 ${scenario.osintEvents.length}`}
+                ? `검증 주장 ${verificationCases.length} · 전세계 OSINT 포인트 ${scenario.osintEvents.length + claimMapEvents.length} · 위성 ${scenario.satellites.length}`
+                : `검증 주장 ${verificationCases.length} · 표시 항적 ${filteredTrackCount}/${rawTrackCount} · 위성 ${scenario.satellites.length} · OSINT 포인트 ${scenario.osintEvents.length + claimMapEvents.length}`}
             </p>
           </section>
         </>
@@ -700,31 +658,41 @@ function App() {
       ) : (
         <>
           {metrics}
-          {fusionPanel}
           <section className="map-grid">
             {mapPanel}
-            <AnomalyPanel anomalies={anomalies} />
+            <ClaimQueuePanel
+              cases={verificationCases}
+              activeClaimId={activeVerificationCase?.claim.id}
+              onSelect={setActiveClaimId}
+            />
           </section>
 
           <section className="content-grid">
-            <BriefingPanel briefing={briefing} />
-            <Timeline events={timeline} />
+            <VerificationPanel verificationCase={activeVerificationCase} />
+            <Timeline
+              events={verificationTimeline}
+              eyebrow="Evidence Timeline"
+              title="근거 확인 이력"
+              emptyMessage="현재 표시할 검증 근거가 없습니다."
+            />
           </section>
 
           <section className="panel source-matrix">
             <div className="panel__header">
-              <p className="eyebrow">데이터 출처</p>
-              <h2>무료/공개 API 계획</h2>
+              <p className="eyebrow">OSINT Integrations</p>
+              <h2>검증 소스 연계 매트릭스</h2>
             </div>
             <div className="source-matrix__grid">
-              {dataSources.map((source) => {
+              {osintSourceCatalog.map((source) => {
                 const safeUrl = safeExternalUrl(source.url);
+                const status = sourceStatusForCatalogEntry(source, scenario);
                 return (
                   <article key={source.name}>
                     <Database size={18} />
                     <strong>{source.name}</strong>
                     <p>{source.role}</p>
-                    <small>{source.mode}</small>
+                    <small>{sourceCatalogStatusLabel(status)} · {source.tier} · {source.mode}</small>
+                    <small>{source.verdictUse}</small>
                     {safeUrl && <a href={safeUrl} target="_blank" rel="noreferrer">문서</a>}
                   </article>
                 );
@@ -733,7 +701,7 @@ function App() {
           </section>
 
           <footer>
-            <strong>안전 기준:</strong> 이 프로토타입은 공개 API와 해당 캐시만 사용합니다. 데이터가 없으면 합성 값으로 채우지 않습니다. 표적 식별, 타격 권고, 자동 교전 판단은 수행하지 않습니다.
+            <strong>안전 기준:</strong> AirMaven Verify는 공개 OSINT 근거의 지지·반박·공백을 표시하는 검증 보조 시스템입니다. 데이터가 없으면 합성 값으로 채우지 않으며, 표적 식별, 타격 권고, 자동 교전 판단은 수행하지 않습니다.
           </footer>
         </>
       )}

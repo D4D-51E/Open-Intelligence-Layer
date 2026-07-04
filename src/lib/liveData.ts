@@ -9,8 +9,10 @@ import type {
   OsintMapEvent,
   RegionId,
   SatellitePass,
+  SatelliteScene,
   Scenario,
   ShipTrack,
+  ThermalAnomaly,
   TimelineEvent,
   Track,
   WeatherSnapshot,
@@ -24,6 +26,8 @@ export type LiveRegionPayload = {
   osint?: OsintItem[];
   osintEvents?: OsintMapEvent[];
   satellites?: SatellitePass[];
+  satelliteScenes?: SatelliteScene[];
+  thermalAnomalies?: ThermalAnomaly[];
   airports?: AirportContext[];
   airRoutes?: AirRoute[];
   notices?: AirspaceNotice[];
@@ -43,6 +47,12 @@ export type LiveScenarioCache = {
     recommendedFetchLoopMs?: number;
     openSkyMinFetchIntervalMs?: number;
     openSkyMaxTracksPerRegion?: number;
+    copernicusStacMinFetchIntervalMs?: number;
+    copernicusStacMaxScenesPerRegion?: number;
+    copernicusStacLookbackHours?: number;
+    nasaFirmsCacheTtlMs?: number;
+    nasaFirmsDayRange?: number;
+    nasaFirmsMaxRecordsPerRegion?: number;
     aisStreamFetchMs?: number;
     aisStreamMaxShipsPerRegion?: number;
     aisStreamCacheTtlMs?: number;
@@ -68,6 +78,8 @@ export function mergeLiveScenario(base: Scenario, live: LiveRegionPayload | unde
     osint: live.osint ?? [],
     osintEvents: live.osintEvents ?? [],
     satellites: live.satellites ?? [],
+    satelliteScenes: live.satelliteScenes ?? [],
+    thermalAnomalies: live.thermalAnomalies ?? [],
     airports: live.airports ?? [],
     airRoutes: live.airRoutes ?? [],
     notices: live.notices ?? [],
@@ -125,6 +137,26 @@ export function buildTimelineFromScenario(scenario: Scenario): TimelineEvent[] {
       description: `${roleHintLabel(sat.roleHint)} · 방향 ${sat.direction} · 표적화에는 사용하지 않음.`,
       severity: 'info' as const,
       relatedIds: [sat.id],
+    })),
+    ...(scenario.satelliteScenes ?? []).map((scene) => ({
+      id: `tl-${scene.id}`,
+      regionId: scenario.region.id,
+      time: scene.observedAt,
+      type: 'satellite-scene' as const,
+      title: `${scene.provider} 장면 메타데이터`,
+      description: `${scene.platform}${scene.cloudCoverPct == null ? '' : ` · 운량 ${scene.cloudCoverPct}%`} · ${scene.summary}`,
+      severity: scene.cloudCoverPct != null && scene.cloudCoverPct > 65 ? 'watch' as const : 'info' as const,
+      relatedIds: [scene.id],
+    })),
+    ...(scenario.thermalAnomalies ?? []).map((item) => ({
+      id: `tl-${item.id}`,
+      regionId: scenario.region.id,
+      time: item.observedAt,
+      type: 'thermal' as const,
+      title: 'NASA FIRMS 열 이상 후보',
+      description: `${item.satellite ?? 'VIIRS/MODIS'} · FRP ${item.frpMw ?? '-'}MW · 공개 열 이상은 폭발/화재의 보조 신호일 뿐 단독 확증이 아닙니다.`,
+      severity: item.frpMw != null && item.frpMw > 80 ? 'watch' as const : 'info' as const,
+      relatedIds: [item.id],
     })),
     ...scenario.airports.map((airport) => ({
       id: `tl-${airport.id}`,

@@ -218,9 +218,26 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
   }
 
   for (const event of props.osintEvents) {
+    const reviewKind = event.source === 'nasa-firms-match' || event.tags.includes('nasa-firms-match')
+      ? 'nasa-firms'
+      : event.source === 'osint-cluster-review' || event.tags.includes('osint-cluster-review') || event.tags.includes('osint-cluster')
+        ? 'osint-cluster'
+        : event.source === 'claim-review-cache' && event.tags.includes('claim-track-match')
+          ? 'claim-track'
+          : 'osint-news';
+
+    const labelColor = reviewKind === 'nasa-firms'
+      ? '#ff8a50'
+      : reviewKind === 'osint-cluster'
+        ? '#7dd3fc'
+        : reviewKind === 'claim-track'
+          ? '#38f6ff'
+          : '#ff7a35';
+
     points.push(pointFeature(event.id, event.lat, event.lon, {
       kind: 'osint',
       title: event.title,
+      reviewKind,
       source: event.domain ?? event.source,
       severity: 'watch',
       confidence: event.confidence,
@@ -229,8 +246,8 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
     }));
     labels.push(pointFeature(`osint-label-${event.id}`, event.lat, event.lon, {
       kind: 'osint-label',
-      title: 'OSINT',
-      color: '#ff7a35',
+      title: reviewKind === 'nasa-firms' ? 'FIRMS' : reviewKind === 'osint-cluster' ? 'CLUSTER' : reviewKind === 'claim-track' ? 'TRACK' : 'OSINT',
+      color: labelColor,
     }));
   }
 
@@ -265,8 +282,8 @@ function popupHtml(properties: Properties) {
   const safeUrl = typeof properties.url === 'string' ? safeExternalUrl(properties.url) : null;
   return `
     <div class="maplibre-hud-popup">
-      <strong>${title}</strong>
-      <span>${kind}${source ? ` · ${source}` : ''}${confidence ? ` · 신뢰도 ${confidence}` : ''}</span>
+    <strong>${title}</strong>
+    <span>${kind}${properties.reviewKind ? ` · ${escapeHtml(String(properties.reviewKind))}` : ''}${source ? ` · ${source}` : ''}${confidence ? ` · 신뢰도 ${confidence}` : ''}</span>
       ${positionNote ? `<span>${positionNote}</span>` : ''}
       ${safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noreferrer">공개 출처 열기</a>` : ''}
     </div>
@@ -415,7 +432,13 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
           'match', ['get', 'kind'],
           'region-switch', '#7dffcf',
           'track', ['match', ['get', 'severity'], 'warning', '#ff5d47', 'watch', '#ffb238', '#7df9ff'],
-          'osint', '#ff7a35',
+          'osint', [
+            'match', ['coalesce', ['get', 'reviewKind'], 'osint-news'],
+            'nasa-firms', '#ff8a50',
+            'osint-cluster', '#7dd3fc',
+            'claim-track', '#38f6ff',
+            '#ff7a35',
+          ],
           'airport', '#c4b5fd',
           'airspace', '#f1b84b',
           'satellite', '#bda9ff',
@@ -439,7 +462,13 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
           'match', ['get', 'kind'],
           'region-switch', '#7dffcf',
           'track', ['match', ['get', 'severity'], 'warning', '#ff5d47', 'watch', '#ffb238', '#7df9ff'],
-          'osint', '#ff7a35',
+          'osint', [
+            'match', ['coalesce', ['get', 'reviewKind'], 'osint-news'],
+            'nasa-firms', '#ff8a50',
+            'osint-cluster', '#7dd3fc',
+            'claim-track', '#38f6ff',
+            '#ff7a35',
+          ],
           'airport', '#c4b5fd',
           'airspace', '#f1b84b',
           'satellite', '#bda9ff',

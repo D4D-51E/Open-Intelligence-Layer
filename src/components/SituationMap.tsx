@@ -67,6 +67,35 @@ function FitRegion({ region }: { region: Region }) {
   return null;
 }
 
+function osintEventVisual(event: OsintMapEvent) {
+  if (event.source === 'nasa-firms-match' || event.tags.includes('nasa-firms-match') || event.tags.includes('thermal')) {
+    return {
+      color: '#ff8a50',
+      radius: 8.2,
+      kindLabel: '열 이상 후보',
+    };
+  }
+  if (event.source === 'osint-cluster-review' || event.tags.includes('osint-cluster-review') || event.tags.includes('osint-cluster')) {
+    return {
+      color: '#38bdf8',
+      radius: 8.8,
+      kindLabel: 'OSINT 클러스터',
+    };
+  }
+  if (event.source === 'claim-review-cache' && event.tags.includes('claim-track-match')) {
+    return {
+      color: '#7dd3fc',
+      radius: 8.5,
+      kindLabel: '항적 연계',
+    };
+  }
+  return {
+    color: '#f97316',
+    radius: 7,
+    kindLabel: 'OSINT',
+  };
+}
+
 function trackSeverity(track: Track, anomalies: Anomaly[]) {
   const related = anomalies.filter((anomaly) => anomaly.relatedTrackIds.includes(track.id));
   if (related.some((item) => item.severity === 'warning')) return 'warning';
@@ -339,21 +368,29 @@ export function SituationMap({
             </Popup>
           </Marker>
         ))}
-        {osintEvents.map((event) => (
+        {osintEvents.map((event) => {
+          const style = osintEventVisual(event);
+          return (
           <CircleMarker
             key={event.id}
             center={[event.lat, event.lon]}
-            radius={7}
-            pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.42, weight: 2 }}
+            radius={style.radius}
+            pathOptions={{
+              color: style.color,
+              fillColor: style.color,
+              fillOpacity: 0.44,
+              weight: 2,
+            }}
           >
             <Popup>
               <strong>{event.title}</strong>
-              <p>OSINT 지도 이벤트 · 신뢰도 {Math.round(event.confidence * 100)}%</p>
+              <p>{style.kindLabel} · 신뢰도 {Math.round(event.confidence * 100)}%</p>
               {event.tags.includes('not-geocoded') && <p>검토 포인트 · 정확 좌표 아님</p>}
               <small>{event.domain ?? event.source}</small>
             </Popup>
           </CircleMarker>
-        ))}
+          );
+        })}
         {satellites.map((sat) => (
           <Fragment key={sat.id}>
             {sat.groundTrack && sat.groundTrack.length > 1 && (

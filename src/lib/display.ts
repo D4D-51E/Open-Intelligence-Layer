@@ -12,12 +12,16 @@ export function eventTypeLabel(value: TimelineEvent['type']) {
     osint: 'OSINT',
     'osint-event': 'OSINT 이벤트',
     satellite: '위성',
+    'satellite-scene': '위성 장면',
+    thermal: '열 이상',
     airport: '공항',
     route: '항로',
     notice: '공지',
     airspace: '공역',
     fusion: '융합',
     anomaly: '이상신호',
+    claim: '주장',
+    evidence: '근거',
   };
   return labels[value];
 }

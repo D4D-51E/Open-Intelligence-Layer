@@ -13,8 +13,9 @@ import {
 
 const execFileAsync = promisify(execFile);
 const outPath = path.resolve('public/data/live-scenarios.json');
-const userAgent = 'AirMaven-Lite-Hackathon/0.1 public-osint-real-data';
+const userAgent = 'AirMaven-Verify-Hackathon/0.1 public-osint-real-data';
 const openSkyTokenUrl = 'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token';
+const copernicusStacSearchUrl = 'https://stac.dataspace.copernicus.eu/v1/search';
 
 const regions = [
   {
@@ -112,6 +113,14 @@ function previousAirspaceContexts(previousCache, regionId) {
   return previousCache?.regions?.[regionId]?.airspaceContexts ?? [];
 }
 
+function previousSatelliteScenes(previousCache, regionId) {
+  return previousCache?.regions?.[regionId]?.satelliteScenes ?? [];
+}
+
+function previousThermalAnomalies(previousCache, regionId) {
+  return previousCache?.regions?.[regionId]?.thermalAnomalies ?? [];
+}
+
 function standbyDetailLayer(source, previousValue = []) {
   return {
     ok: previousValue.length > 0,
@@ -119,6 +128,29 @@ function standbyDetailLayer(source, previousValue = []) {
     status: previousValue.length > 0 ? 'cached' : 'standby',
     updatedAt: undefined,
     reason: `전세계 ${source} 전체 조회는 비용/제한 때문에 비활성입니다. 상세 AOI 선택 시 수집합니다.`,
+  };
+}
+
+function standbySatelliteSceneLayer(region, previousCache) {
+  const previous = previousSatelliteScenes(previousCache, region.id);
+  const previousUpdatedAt = previousSourceUpdatedAt(previousCache, region.id, 'copernicusStac');
+  return {
+    scenes: previous,
+    status: previous.length > 0 ? 'cached' : 'standby',
+    updatedAt: previousUpdatedAt,
+    reason: '전세계 Copernicus STAC 조회는 비용/응답량 때문에 비활성입니다. 상세 AOI 선택 시 조회합니다.',
+  };
+}
+
+function standbyThermalLayer(region, previousCache) {
+  const previous = previousThermalAnomalies(previousCache, region.id);
+  const previousUpdatedAt = previousSourceUpdatedAt(previousCache, region.id, 'nasaFirms');
+  return {
+    thermalAnomalies: previous,
+    status: previous.length > 0 ? 'cached' : 'standby',
+    updatedAt: previousUpdatedAt,
+    reason: '전세계 NASA FIRMS 조회는 거래량이 커서 비활성입니다. 상세 AOI 선택 시 조회합니다.',
+    warnings: [],
   };
 }
 
@@ -193,6 +225,30 @@ function gdeltBackoffMs() {
   return parsePositiveInteger(process.env.GDELT_BACKOFF_MS, 30 * 60 * 1000);
 }
 
+function copernicusStacMinFetchIntervalMs() {
+  return parsePositiveInteger(process.env.COPERNICUS_STAC_MIN_FETCH_INTERVAL_MS, 6 * 60 * 60 * 1000);
+}
+
+function copernicusStacMaxScenesPerRegion() {
+  return parsePositiveInteger(process.env.COPERNICUS_STAC_MAX_SCENES_PER_REGION, 6);
+}
+
+function copernicusStacLookbackHours() {
+  return parsePositiveInteger(process.env.COPERNICUS_STAC_LOOKBACK_HOURS, 72);
+}
+
+function nasaFirmsCacheTtlMs() {
+  return parsePositiveInteger(process.env.NASA_FIRMS_CACHE_TTL_MS, 60 * 60 * 1000);
+}
+
+function nasaFirmsDayRange() {
+  return Math.max(1, Math.min(10, parsePositiveInteger(process.env.NASA_FIRMS_DAY_RANGE, 1)));
+}
+
+function nasaFirmsMaxRecordsPerRegion() {
+  return parsePositiveInteger(process.env.NASA_FIRMS_MAX_RECORDS_PER_REGION, 25);
+}
+
 function aisCacheTtlMs() {
   return parsePositiveInteger(process.env.AISSTREAM_CACHE_TTL_MS, 30 * 60 * 1000);
 }
@@ -231,6 +287,29 @@ async function readEnv() {
 async function fetchJson(url, { timeoutMs = 15000, headers = {} } = {}) {
   const text = await fetchText(url, { timeoutMs, headers });
   return JSON.parse(text);
+}
+
+async function fetchJsonPost(url, body, { timeoutMs = 15000, headers = {} } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'user-agent': userAgent,
+        accept: 'application/json',
+        'content-type': 'application/json',
+        ...headers,
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    if (!response.ok) throw new HttpStatusError(response.status, response.statusText, text, response.headers);
+    return JSON.parse(text);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function fetchText(url, { timeoutMs = 15000, headers = {} } = {}) {
@@ -632,6 +711,244 @@ async function fetchOsint(region, previousCache, generatedAt) {
 function parseGdeltSeenDate(value) {
   if (!value || !/^\d{8}T\d{6}Z$/.test(value)) return new Date().toISOString();
   return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}T${value.slice(9, 11)}:${value.slice(11, 13)}:${value.slice(13, 15)}Z`;
+}
+
+function commaListFromEnv(name, fallback) {
+  return (process.env[name] ?? fallback)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function validIsoDate(value, fallback) {
+  const time = new Date(value ?? '').getTime();
+  return Number.isFinite(time) ? new Date(time).toISOString() : fallback;
+}
+
+function numberField(record, keys) {
+  for (const key of keys) {
+    const value = Number(record?.[key]);
+    if (Number.isFinite(value)) return value;
+  }
+  return undefined;
+}
+
+function copernicusCollections() {
+  return commaListFromEnv('COPERNICUS_STAC_COLLECTIONS', 'sentinel-2-l2a,sentinel-1-grd');
+}
+
+function normalizeCopernicusFeature(feature, region, index, generatedAt) {
+  const properties = feature?.properties ?? {};
+  const collection = String(feature?.collection ?? properties.collection ?? 'copernicus');
+  const id = String(feature?.id ?? `${collection}-${index + 1}`).replace(/[^a-zA-Z0-9_.-]/g, '-');
+  const observedAt = validIsoDate(
+    properties.datetime ?? properties.start_datetime ?? properties.end_datetime,
+    generatedAt,
+  );
+  const cloudCoverPct = numberField(properties, ['eo:cloud_cover', 'cloudCover', 'cloud_cover']);
+  const link = (feature?.links ?? []).find((item) => item.rel === 'self' || item.rel === 'canonical')
+    ?? (feature?.links ?? [])[0];
+  const platform = String(
+    properties.platform
+      ?? properties.constellation
+      ?? collection,
+  );
+  const productType = properties['product:type']
+    ?? properties.productType
+    ?? properties['processing:level'];
+
+  return {
+    id: `copernicus-${region.id}-${id}`.slice(0, 160),
+    regionId: region.id,
+    source: 'copernicus-stac-cache',
+    provider: 'Copernicus Data Space',
+    platform,
+    productType: productType ? String(productType) : undefined,
+    observedAt,
+    cloudCoverPct: cloudCoverPct == null ? undefined : Math.round(cloudCoverPct * 10) / 10,
+    bbox: Array.isArray(feature?.bbox) && feature.bbox.length === 4 ? feature.bbox : region.bbox,
+    url: link?.href ?? `https://stac.dataspace.copernicus.eu/v1/collections/${collection}/items/${encodeURIComponent(id)}`,
+    summary: `${collection} 공개 STAC 장면 메타데이터입니다. 자동 피해 판독이 아니라 촬영 가능성·시간·운량 맥락입니다.`,
+  };
+}
+
+async function fetchCopernicusScenes(region, generatedAt) {
+  const end = new Date(generatedAt);
+  const start = new Date(end.getTime() - copernicusStacLookbackHours() * 60 * 60 * 1000);
+  const json = await fetchJsonPost(copernicusStacSearchUrl, {
+    collections: copernicusCollections(),
+    bbox: region.bbox,
+    datetime: `${start.toISOString()}/${end.toISOString()}`,
+    limit: copernicusStacMaxScenesPerRegion(),
+    sortby: [{ field: 'properties.datetime', direction: 'desc' }],
+  }, { timeoutMs: 25000 });
+
+  return (json.features ?? [])
+    .map((feature, index) => normalizeCopernicusFeature(feature, region, index, generatedAt))
+    .slice(0, copernicusStacMaxScenesPerRegion());
+}
+
+async function fetchCopernicusScenesWithCache(region, previousCache, generatedAt) {
+  const previous = previousSatelliteScenes(previousCache, region.id);
+  const previousUpdatedAt = previousSourceUpdatedAt(previousCache, region.id, 'copernicusStac');
+  const nowMs = new Date(generatedAt).getTime();
+  const minFetchMs = copernicusStacMinFetchIntervalMs();
+
+  if (!boolFromEnv('COPERNICUS_STAC_FETCH_ENABLED', true)) {
+    return {
+      scenes: previous,
+      status: previous.length > 0 ? 'cached' : 'disabled',
+      updatedAt: previousUpdatedAt,
+      reason: 'COPERNICUS_STAC_FETCH_ENABLED=false',
+    };
+  }
+
+  if (isFresh(previousUpdatedAt, nowMs, minFetchMs)) {
+    return {
+      scenes: previous,
+      status: previous.length > 0 ? 'cached' : 'empty',
+      updatedAt: previousUpdatedAt,
+      reason: `TTL ${Math.round(minFetchMs / 3600000)}시간 내 Copernicus STAC 캐시 재사용`,
+    };
+  }
+
+  try {
+    const scenes = await fetchCopernicusScenes(region, generatedAt);
+    return {
+      scenes,
+      status: scenes.length > 0 ? 'live' : 'empty',
+      updatedAt: generatedAt,
+      reason: scenes.length > 0 ? undefined : 'Copernicus STAC AOI/기간 장면 0건',
+    };
+  } catch (error) {
+    return {
+      scenes: previous,
+      status: previous.length > 0 ? 'cached' : 'unavailable',
+      updatedAt: previousUpdatedAt,
+      warning: `Copernicus STAC ${region.id}: ${shortError(error)}`,
+      reason: shortError(error),
+    };
+  }
+}
+
+function firmsObservedAt(record, fallback) {
+  const date = record.acq_date;
+  const time = String(record.acq_time ?? '').padStart(4, '0');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date) && /^\d{4}$/.test(time)) {
+    return `${date}T${time.slice(0, 2)}:${time.slice(2, 4)}:00Z`;
+  }
+  return validIsoDate(date, fallback);
+}
+
+function firmsConfidence(value) {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (raw === 'h' || raw === 'high') return 0.85;
+  if (raw === 'n' || raw === 'nominal') return 0.65;
+  if (raw === 'l' || raw === 'low') return 0.45;
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric)) return Math.max(0.2, Math.min(0.95, numeric / 100));
+  return undefined;
+}
+
+function normalizeFirmsRecord(record, region, index, generatedAt) {
+  const lat = Number(record.latitude);
+  const lon = Number(record.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (!pointInRegion(region, lat, lon, 0.2)) return null;
+  const observedAt = firmsObservedAt(record, generatedAt);
+  const satellite = String(record.satellite ?? record.instrument ?? process.env.NASA_FIRMS_SOURCE ?? 'VIIRS').trim();
+  const frpMw = numberField(record, ['frp', 'FRP']);
+  const brightnessKelvin = numberField(record, ['bright_ti4', 'bright_t31', 'brightness']);
+  const idParts = [region.id, satellite, observedAt, index + 1]
+    .join('-')
+    .replace(/[^a-zA-Z0-9_.-]/g, '-');
+  return {
+    id: `firms-${idParts}`.slice(0, 160),
+    regionId: region.id,
+    source: 'nasa-firms-cache',
+    provider: 'NASA FIRMS',
+    lat,
+    lon,
+    observedAt,
+    confidence: firmsConfidence(record.confidence),
+    brightnessKelvin,
+    frpMw,
+    satellite,
+    url: 'https://firms.modaps.eosdis.nasa.gov/map/',
+  };
+}
+
+async function fetchNasaFirms(region, generatedAt) {
+  const source = process.env.NASA_FIRMS_SOURCE ?? 'VIIRS_SNPP_NRT';
+  const [minLon, minLat, maxLon, maxLat] = region.bbox;
+  const area = [minLon, minLat, maxLon, maxLat].join(',');
+  const dateSuffix = process.env.NASA_FIRMS_DATE ? `/${encodeURIComponent(process.env.NASA_FIRMS_DATE)}` : '';
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(process.env.NASA_FIRMS_MAP_KEY)}/${encodeURIComponent(source)}/${area}/${nasaFirmsDayRange()}${dateSuffix}`;
+  const text = await fetchText(url, { timeoutMs: 25000 });
+  if (/invalid|error|map[_ ]?key/i.test(text) && !/^latitude,longitude,/i.test(text.trim())) {
+    throw new Error(text.trim().slice(0, 180));
+  }
+  return parseCsv(text)
+    .map((record, index) => normalizeFirmsRecord(record, region, index, generatedAt))
+    .filter(Boolean)
+    .sort((a, b) => (b.frpMw ?? 0) - (a.frpMw ?? 0))
+    .slice(0, nasaFirmsMaxRecordsPerRegion());
+}
+
+async function fetchNasaFirmsWithCache(region, previousCache, generatedAt) {
+  const previous = previousThermalAnomalies(previousCache, region.id);
+  const previousUpdatedAt = previousSourceUpdatedAt(previousCache, region.id, 'nasaFirms');
+  const nowMs = new Date(generatedAt).getTime();
+  const minFetchMs = nasaFirmsCacheTtlMs();
+
+  if (!boolFromEnv('NASA_FIRMS_FETCH_ENABLED', true)) {
+    return {
+      thermalAnomalies: previous,
+      status: previous.length > 0 ? 'cached' : 'disabled',
+      updatedAt: previousUpdatedAt,
+      reason: 'NASA_FIRMS_FETCH_ENABLED=false',
+      warnings: [],
+    };
+  }
+
+  if (!process.env.NASA_FIRMS_MAP_KEY) {
+    return {
+      thermalAnomalies: previous,
+      status: previous.length > 0 ? 'cached' : 'disabled',
+      updatedAt: previousUpdatedAt,
+      reason: 'NASA_FIRMS_MAP_KEY 미설정',
+      warnings: [],
+    };
+  }
+
+  if (isFresh(previousUpdatedAt, nowMs, minFetchMs)) {
+    return {
+      thermalAnomalies: previous,
+      status: previous.length > 0 ? 'cached' : 'empty',
+      updatedAt: previousUpdatedAt,
+      reason: `TTL ${Math.round(minFetchMs / 60000)}분 내 NASA FIRMS 캐시 재사용`,
+      warnings: [],
+    };
+  }
+
+  try {
+    const thermalAnomalies = await fetchNasaFirms(region, generatedAt);
+    return {
+      thermalAnomalies,
+      status: thermalAnomalies.length > 0 ? 'live' : 'empty',
+      updatedAt: generatedAt,
+      reason: thermalAnomalies.length > 0 ? undefined : 'NASA FIRMS AOI/기간 열 이상 0건',
+      warnings: [],
+    };
+  } catch (error) {
+    return {
+      thermalAnomalies: previous,
+      status: previous.length > 0 ? 'cached' : 'unavailable',
+      updatedAt: previousUpdatedAt,
+      reason: shortError(error),
+      warnings: [`NASA FIRMS ${region.id}: ${shortError(error)}`],
+    };
+  }
 }
 
 async function fetchCelesTrakSample() {
@@ -1489,7 +1806,16 @@ async function main() {
   }
 
   for (const region of regions) {
-    const [openSkyResult, weatherResult, osintResult, aisResult, icaoFirResult, notamResult] = await Promise.all([
+    const [
+      openSkyResult,
+      weatherResult,
+      osintResult,
+      copernicusResult,
+      firmsResult,
+      aisResult,
+      icaoFirResult,
+      notamResult,
+    ] = await Promise.all([
       region.global
         ? Promise.resolve(standbyDetailLayer('OpenSky', previousOpenSkyTracks(previousCache, region.id)))
         : fetchOpenSkyWithCache(region, previousCache, generatedAt),
@@ -1502,6 +1828,12 @@ async function main() {
         sourceStatus: { gdelt: 'unavailable', googleNews: 'unavailable' },
         sourceReasons: { gdelt: 'OSINT 수집 실패', googleNews: 'OSINT 수집 실패' },
       }),
+      region.global
+        ? Promise.resolve(standbySatelliteSceneLayer(region, previousCache))
+        : fetchCopernicusScenesWithCache(region, previousCache, generatedAt),
+      region.global
+        ? Promise.resolve(standbyThermalLayer(region, previousCache))
+        : fetchNasaFirmsWithCache(region, previousCache, generatedAt),
       region.global
         ? Promise.resolve({ ok: true, value: standbyAisLayer(region, previousCache) })
         : safeStep(`AISStream ${region.id}`, () => fetchAisStream(region, previousCache, generatedAt), {
@@ -1526,6 +1858,7 @@ async function main() {
       if (!result.ok) errors.push(result.error);
     }
     if (shouldRecordWarning(openSkyResult.warning)) errors.push(openSkyResult.warning);
+    if (shouldRecordWarning(copernicusResult.warning)) errors.push(copernicusResult.warning);
     if (shouldRecordWarning(icaoFirResult.warning)) errors.push(icaoFirResult.warning);
     if (openSkyResult.retryAfterUntil) {
       rateLimitState.opensky = {
@@ -1539,10 +1872,13 @@ async function main() {
       };
     }
     errors.push(...osintResult.value.warnings);
+    errors.push(...firmsResult.warnings);
     errors.push(...aisResult.value.warnings);
     errors.push(...notamResult.value.warnings);
     const ships = aisResult.value.ships;
     const airspaceContexts = icaoFirResult.items;
+    const satelliteScenes = copernicusResult.scenes;
+    const thermalAnomalies = firmsResult.thermalAnomalies;
     const airports = airportLayerForRegion(region, airportsResult.value);
     const airRoutes = airRouteLayerForRegion(region, airports);
     const osintEvents = osintEventLayerForRegion(region, osintResult.value.items);
@@ -1552,6 +1888,8 @@ async function main() {
       openMeteo: region.global ? 'standby' : weatherResult.ok ? 'live' : 'unavailable',
       ...osintResult.value.sourceStatus,
       celestrak: celestrakResult.ok && celestrakResult.value.length > 0 ? 'live' : 'unavailable',
+      copernicusStac: copernicusResult.status,
+      nasaFirms: firmsResult.status,
       ais: aisResult.value.status,
       icaoFir: icaoFirResult.status,
       ourAirports: airportsResult.ok ? 'live' : 'unavailable',
@@ -1565,6 +1903,8 @@ async function main() {
         ? { openMeteo: '전세계 단일 중심점 기상은 의미가 낮아 비활성입니다. 상세 AOI에서 조회합니다.' }
         : weatherResult.ok ? {} : { openMeteo: weatherResult.error }),
       ...(osintResult.value.sourceReasons ?? {}),
+      ...(copernicusResult.reason ? { copernicusStac: copernicusResult.reason } : {}),
+      ...(firmsResult.reason ? { nasaFirms: firmsResult.reason } : {}),
       ...(aisResult.value.reason ? { ais: aisResult.value.reason } : {}),
       ...(icaoFirResult.reason ? { icaoFir: icaoFirResult.reason } : {}),
       ...(celestrakResult.ok ? {} : { celestrak: celestrakResult.error }),
@@ -1576,6 +1916,8 @@ async function main() {
     };
     const updatedAt = sourceUpdatedAt(sourceStatus, generatedAt);
     if (openSkyResult.updatedAt) updatedAt.opensky = openSkyResult.updatedAt;
+    if (copernicusResult.updatedAt) updatedAt.copernicusStac = copernicusResult.updatedAt;
+    if (firmsResult.updatedAt) updatedAt.nasaFirms = firmsResult.updatedAt;
     if (aisResult.value.updatedAt) updatedAt.ais = aisResult.value.updatedAt;
     if (icaoFirResult.updatedAt) updatedAt.icaoFir = icaoFirResult.updatedAt;
     regionsOut[region.id] = {
@@ -1585,6 +1927,8 @@ async function main() {
       osint: osintResult.value.items,
       osintEvents,
       satellites: satelliteLayerForRegion(region, celestrakResult.value, generatedAt),
+      satelliteScenes,
+      thermalAnomalies,
       airports,
       airRoutes,
       notices,
@@ -1604,6 +1948,12 @@ async function main() {
       recommendedFetchLoopMs: 300_000,
       openSkyMinFetchIntervalMs: openSkyMinFetchIntervalMs(),
       openSkyMaxTracksPerRegion: openSkyMaxTracksPerRegion(),
+      copernicusStacMinFetchIntervalMs: copernicusStacMinFetchIntervalMs(),
+      copernicusStacMaxScenesPerRegion: copernicusStacMaxScenesPerRegion(),
+      copernicusStacLookbackHours: copernicusStacLookbackHours(),
+      nasaFirmsCacheTtlMs: nasaFirmsCacheTtlMs(),
+      nasaFirmsDayRange: nasaFirmsDayRange(),
+      nasaFirmsMaxRecordsPerRegion: nasaFirmsMaxRecordsPerRegion(),
       aisStreamFetchMs: aisStreamFetchMs(),
       aisStreamMaxShipsPerRegion: aisStreamMaxShipsPerRegion(),
       aisStreamCacheTtlMs: aisCacheTtlMs(),

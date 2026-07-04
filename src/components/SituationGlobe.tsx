@@ -374,7 +374,23 @@ function drawTrackLayers(ctx: CanvasRenderingContext2D, projection: Projection, 
 
   for (const airport of props.airports) drawPoint(ctx, projection, airport.lat, airport.lon, '#c4b5fd', 3.2, airport.ident, labels);
   for (const context of props.airspaceContexts) drawPoint(ctx, projection, context.lat, context.lon, '#f1b84b', 3.5, context.icaoCode, labels);
-  for (const event of props.osintEvents) drawPoint(ctx, projection, event.lat, event.lon, '#ff7a35', 4.2, 'OSINT', labels);
+  for (const event of props.osintEvents) {
+    const color = event.source === 'nasa-firms-match' || event.tags.includes('nasa-firms-match') || event.tags.includes('thermal')
+      ? '#ff8a50'
+      : event.source === 'osint-cluster-review' || event.tags.includes('osint-cluster-review') || event.tags.includes('osint-cluster')
+        ? '#7dd3fc'
+        : event.source === 'claim-review-cache' && event.tags.includes('claim-track-match')
+          ? '#38f6ff'
+          : '#ff7a35';
+    const label = event.source === 'nasa-firms-match' || event.tags.includes('thermal')
+      ? 'FIRMS'
+      : event.source === 'osint-cluster-review' || event.tags.includes('osint-cluster')
+        ? '클러스터'
+        : event.source === 'claim-review-cache' && event.tags.includes('claim-track-match')
+          ? '항적'
+          : 'OSINT';
+    drawPoint(ctx, projection, event.lat, event.lon, color, 4.2, label, labels);
+  }
   for (const sat of props.satellites) drawPoint(ctx, projection, sat.lat, sat.lon, '#bda9ff', 4.4, sat.name, labels);
 
   ctx.restore();

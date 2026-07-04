@@ -1,45 +1,42 @@
-# AirMaven Lite
+# AirMaven Verify
 
-D4D T2 **Maven-style Air ISR Fusion Copilot** hackathon prototype.
+D4D T2 **Air/Space OSINT Claim Verification Copilot** hackathon prototype.
 
-AirMaven Lite fuses public API aircraft tracks, weather context, OSINT/news source cards, public orbital-awareness layers, and public airport context into a map/timeline/briefing interface for analyst triage.
+AirMaven Verify pivots the original Maven-style ISR dashboard into a claim-centric verification system: it tracks wartime air/space claims, links public evidence, separates support/contradiction/context/gaps, and renders a conservative verdict for analyst review.
 
-> Safety boundary: this is **analyst decision-support only**. It does not perform target designation, strike recommendation, or automated engagement logic.
+> Safety boundary: this is **analyst decision-support only**. It does not perform target designation, strike recommendation, weapon selection, or automated engagement logic.
 
 ## Features
 
-- Default **Ops 4-up · team mode** dashboard:
-  - fused situation map
-  - metrics + analyst-review cues
-  - citation briefing
-  - timeline + terminal-style ingest log
-- Optional **Narrative · scroll report** mode for source matrix / report-style walkthrough
-- AOI preset selector: 대만해협, 수도권 상공, 남중국해, 서해/NLL 인근
-- Data mode is fixed to `API 스냅샷`: `public/data/live-scenarios.json`
-- Leaflet common operating picture map
-  - 기본값: OSM tile basemap for visual background only
-  - 예비 옵션: `오프라인` basemap selector 또는 `?basemap=offline`
-- Aircraft tracks from OpenSky live/cache state vectors
-- Aircraft display filters: platform class, minimum altitude, minimum speed
-- Open-Meteo live weather snapshot
-- GDELT or Google News RSS live OSINT citation cards
-- CelesTrak satellite/orbital layer with computed ground-track projection when CelesTrak is reachable
-- OurAirports public airport markers and airport-axis reference routes
-- ICAO `fir-by-location` context for the selected AOI center, TTL-cached to avoid burning calls
-- AISStream layer uses a server-side WebSocket when `AISSTREAM_API_KEY` is configured
-- ICAO NOTAM layer calls a configured ICAO API Data Service endpoint when `ICAO_API_KEY` and `ICAO_NOTAM_ENDPOINT` are configured
-- Missing or failed sources are shown as `사용 불가` and produce empty layers; the app does not generate placeholder data to fill gaps
-- Rule-based anomaly engine:
-  - route deviation / abrupt heading change
-  - weather-risk cue
-  - OSINT/activity correlation
-- Deterministic briefing with citations and caveats
-
-- Fusion Copilot panel:
-  - Korean natural-language demo presets select AOI/module intent deterministically in the browser
-  - Fusion Event cards combine aircraft, AIS, FIR, weather, satellite, and OSINT signals only when public/cache evidence exists
-  - each event shows confidence factors, citations, safety notes, and local analyst review states (`대기`, `검토 필요`, `확인됨`, `보류/무시`)
-- Optional server-side OpenAI briefing precompute script that never exposes the key to the browser
+- Default **Ops 4-up · verify mode** dashboard:
+  - preserved dark HUD style and Leaflet situation map/globe-oriented operating picture
+  - claim verification queue
+  - active verdict and evidence matrix
+  - source health / caveat panel
+  - evidence timeline and terminal-style ingest log
+- Optional **Narrative · scroll report** mode for a shareable verification brief and source matrix.
+- Claim-centric data model:
+  - `claim`, `evidence`, `verdict`, `contradiction`, `gap`
+  - verdict labels: `Confirmed`, `Likely True`, `Plausible but Unverified`, `Inconclusive`, `Likely False`, `False`
+  - evidence stances: supports / contradicts / context / gap
+- Seeded demo claims:
+  - Iran / U.S. F-35 shootdown false-claim scenario
+  - KADIZ mass-entry claim
+  - South China Sea base-strike claim
+  - Taiwan Strait sortie-spike claim
+  - West Sea / NLL airspace-closure claim
+- AOI preset selector: Global, 대만해협, 수도권 상공, 남중국해, 서해/NLL 인근.
+- Data mode is fixed to `API 스냅샷`: `public/data/live-scenarios.json`.
+- Live/cache OSINT integrations:
+  - GDELT + Google News RSS for claim/news discovery
+  - OpenSky for public ADS-B state vectors
+  - CelesTrak + satellite.js for public orbital pass context
+  - Copernicus Data Space STAC for public satellite scene metadata
+  - NASA FIRMS for thermal anomaly candidates when a MAP_KEY is configured
+  - Open-Meteo for weather/visibility/cloud context
+  - OurAirports, ICAO FIR/NOTAM, AISStream for supporting airspace/maritime context
+- Missing, disabled, rate-limited, or unsupported sources are shown as evidence gaps; the app does not fabricate placeholder intelligence.
+- Deterministic briefing/verdict logic with citations and caveats.
 
 ## Setup
 
@@ -90,10 +87,12 @@ Current live-cache sources:
 
 | Layer | API | Runtime behavior |
 |---|---|---|
+| Claim/news discovery | GDELT DOC 2.0 ArtList JSON + Google News RSS | GDELT 우선, 429 시 backoff 후 Google News RSS 대체 |
 | Aircraft tracks | OpenSky `/states/all` bbox query | Live/cache public ADS-B state vectors, capped per AOI |
+| Satellite/orbital pass | CelesTrak GP JSON `GROUP=stations` | Public GP metadata and computed ground track when reachable |
+| Satellite scenes | Copernicus Data Space STAC `/v1/search` | AOI/time-window scene metadata, platform, timestamp, cloud cover |
+| Thermal anomalies | NASA FIRMS area CSV API | Requires server-side `NASA_FIRMS_MAP_KEY`; returns VIIRS/MODIS thermal candidates |
 | Weather | Open-Meteo forecast/current API | Live temperature, wind, gust, cloud, precipitation, visibility |
-| News/OSINT | GDELT DOC 2.0 ArtList JSON + Google News RSS | GDELT 우선, 429 시 backoff 후 Google News RSS 대체 |
-| Satellite/orbital | CelesTrak GP JSON `GROUP=stations` | Public GP metadata and computed ground track when reachable |
 | Airport context | OurAirports CSV | Public airport markers and derived airport-axis route context |
 | FIR context | ICAO API Data Service `fir-by-location` | AOI center FIR lookup, 24h TTL cache by default |
 | AIS maritime | AISStream WebSocket `wss://stream.aisstream.io/v0/stream` | Server-side live collection; 수신 0건이면 상태 사유 표시, 직전 캐시가 신선하면 유지 |
@@ -113,6 +112,27 @@ OPENSKY_FETCH_ENABLED=true
 OPENSKY_MIN_FETCH_INTERVAL_MS=1800000
 OPENSKY_MAX_TRACKS_PER_REGION=50
 GDELT_BACKOFF_MS=1800000
+```
+
+Optional Copernicus STAC scene metadata:
+
+```bash
+COPERNICUS_STAC_FETCH_ENABLED=true
+COPERNICUS_STAC_COLLECTIONS=sentinel-2-l2a,sentinel-1-grd
+COPERNICUS_STAC_LOOKBACK_HOURS=72
+COPERNICUS_STAC_MIN_FETCH_INTERVAL_MS=21600000
+COPERNICUS_STAC_MAX_SCENES_PER_REGION=6
+```
+
+Optional NASA FIRMS thermal anomaly lookup:
+
+```bash
+NASA_FIRMS_MAP_KEY=
+NASA_FIRMS_FETCH_ENABLED=true
+NASA_FIRMS_SOURCE=VIIRS_SNPP_NRT
+NASA_FIRMS_DAY_RANGE=1
+NASA_FIRMS_CACHE_TTL_MS=3600000
+NASA_FIRMS_MAX_RECORDS_PER_REGION=25
 ```
 
 Optional AISStream credentials:

@@ -3217,3 +3217,351 @@ body {
     min-height: 560px;
   }
 }
+
+/* AirMaven Verify pivot: claim queue and evidence-first verdict panels. */
+.claim-queue-panel,
+.verification-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.claim-queue-list,
+.evidence-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.claim-queue-empty,
+.verification-empty {
+  margin: 0;
+  padding: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.claim-card {
+  width: 100%;
+  display: grid;
+  gap: 7px;
+  padding: 13px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.claim-card:hover,
+.claim-card:focus-visible,
+.claim-card.is-active {
+  outline: none;
+  background: rgba(125, 249, 255, .055);
+}
+
+.claim-card.is-active {
+  box-shadow: inset 3px 0 0 var(--hud-cyan);
+}
+
+.claim-card--false,
+.claim-card--likely_false {
+  box-shadow: inset 2px 0 0 rgba(255, 93, 71, .68);
+}
+
+.claim-card--confirmed,
+.claim-card--likely_true {
+  box-shadow: inset 2px 0 0 rgba(99, 230, 165, .58);
+}
+
+.claim-card__topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.claim-card__topline strong {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.claim-card__topline em {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.claim-card__summary,
+.claim-card__meta {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+.claim-card__meta {
+  font-family: var(--mono);
+}
+
+.verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.verdict-badge--false,
+.verdict-badge--likely_false {
+  border-color: rgba(255, 93, 71, .38);
+  color: #ff8a76;
+}
+
+.verdict-badge--confirmed,
+.verdict-badge--likely_true {
+  border-color: rgba(99, 230, 165, .34);
+  color: var(--ok);
+}
+
+.verdict-badge--plausible_unverified,
+.verdict-badge--inconclusive {
+  border-color: rgba(255, 178, 56, .32);
+  color: var(--warn);
+}
+
+.verification-summary {
+  display: grid;
+  gap: 7px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(0, 0, 0, .1);
+}
+
+.verification-summary p {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.46;
+  font-size: 14px;
+}
+
+.verification-summary small {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.evidence-matrix {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.evidence-matrix span {
+  display: grid;
+  gap: 3px;
+  padding: 10px 8px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.evidence-matrix span:first-child { border-left: 0; }
+.evidence-matrix strong { color: var(--ink); font-size: 18px; line-height: 1; }
+
+.evidence-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+}
+
+.evidence-row--supports { box-shadow: inset 2px 0 0 rgba(99, 230, 165, .5); }
+.evidence-row--contradicts { box-shadow: inset 2px 0 0 rgba(255, 93, 71, .58); }
+.evidence-row--gap { box-shadow: inset 2px 0 0 rgba(255, 178, 56, .48); }
+
+.evidence-row__topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.evidence-row__topline strong {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.evidence-row__topline span,
+.evidence-row small,
+.evidence-row a {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.evidence-row__topline span {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.evidence-row p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.43;
+}
+
+.evidence-row__caveat {
+  color: color-mix(in srgb, var(--warn) 72%, var(--muted)) !important;
+}
+
+.evidence-row a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  color: var(--accent);
+}
+
+.verification-next-checks,
+.verification-caveats {
+  display: grid;
+  gap: 8px;
+  padding: 13px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.verification-next-checks h3,
+.verification-caveats h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.verification-next-checks ul,
+.verification-caveats ul {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ops-dashboard .claim-queue-panel,
+.ops-dashboard .verification-panel {
+  border-radius: 16px;
+  background: rgba(2, 9, 8, .72);
+}
+
+.ops-dashboard .claim-queue-panel--compact {
+  flex: 0 0 auto;
+  max-height: 42%;
+}
+
+.ops-dashboard .verification-panel--compact {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ops-dashboard .claim-card,
+.ops-dashboard .evidence-row,
+.ops-dashboard .verification-summary,
+.ops-dashboard .evidence-matrix,
+.ops-dashboard .verification-next-checks,
+.ops-dashboard .verification-caveats {
+  border-color: rgba(125, 249, 255, .09);
+}
+
+.ops-dashboard .claim-card {
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, .12);
+}
+
+.ops-dashboard .claim-queue-list > [role="listitem"]:nth-child(n+5) {
+  display: none;
+}
+
+.ops-dashboard .claim-card__summary {
+  display: none;
+}
+
+.ops-dashboard .claim-card__topline strong,
+.ops-dashboard .evidence-row__topline strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ops-dashboard .claim-card__meta,
+.ops-dashboard .evidence-row p,
+.ops-dashboard .evidence-row small,
+.ops-dashboard .evidence-row a {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ops-dashboard .verification-panel--compact .panel__header,
+.ops-dashboard .claim-queue-panel--compact .panel__header {
+  min-height: 48px;
+  padding: 10px 12px 9px;
+}
+
+.ops-dashboard .verification-panel--compact .panel__header h2,
+.ops-dashboard .claim-queue-panel--compact .panel__header h2 {
+  font-size: 15px;
+}
+
+.ops-dashboard .verification-summary {
+  padding: 10px 12px;
+}
+
+.ops-dashboard .verification-summary p {
+  font-size: 12px;
+}
+
+.ops-dashboard .evidence-matrix strong {
+  font-size: 16px;
+}
+
+.ops-dashboard .evidence-row {
+  padding: 9px 12px;
+}
+
+.ops-dashboard .verification-panel--compact .evidence-row:nth-child(n+8) {
+  display: none;
+}
+
+.ops-dashboard .verification-next-checks {
+  padding: 10px 12px;
+}
+
+@media (max-width: 680px) {
+  .evidence-matrix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .claim-card__topline,
+  .evidence-row__topline { display: grid; }
+  .verdict-badge { white-space: normal; }
+}

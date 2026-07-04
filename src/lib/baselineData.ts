@@ -65,6 +65,8 @@ export function getScenario(regionId: RegionId): Scenario {
     osint: [],
     osintEvents: [],
     satellites: [],
+    satelliteScenes: [],
+    thermalAnomalies: [],
     airports: [],
     airRoutes: [],
     notices: [],
