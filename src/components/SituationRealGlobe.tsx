@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { AirportContext, AirRoute, AirspaceContext, AirspaceNotice, Anomaly, OsintMapEvent, ReferenceLine, Region, RegionId, SatellitePass, ShipTrack, Track, WatchZone } from '../lib/types';
 import { VERDICT_COLOR, type AssessedClaim } from '../lib/claimVerify';
 import type { SeismicEvent } from '../lib/seismicApi';
+import type { AirAlert } from '../lib/airAlertApi';
 import { safeExternalUrl } from '../lib/safeLinks';
 import { MapRegionSwitcher } from './MapRegionSwitcher';
 
@@ -23,6 +24,7 @@ type SituationRealGlobeProps = {
   osintEvents: OsintMapEvent[];
   claims: AssessedClaim[];
   seismic: SeismicEvent[];
+  airAlerts: AirAlert[];
   anomalies: Anomaly[];
   onViewportChange?: (viewport: { bbox: [number, number, number, number]; zoom: number; center: [number, number] }) => void;
   focusTrack?: { id: string; lat: number; lon: number; html: string } | null;
@@ -220,6 +222,19 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
       color: '#ff3355',
     }));
     labels.push(pointFeature(`seismic-label-${eq.id}`, eq.lat, eq.lon, { kind: 'seismic-label', title: mag, color: '#ff3355' }));
+  }
+
+  // Ukrainian air-raid alerts (@air_alert_ua) — active-alert oblasts as red markers. Distinct
+  // from strike-claims (imminent-threat alerts, not verified results).
+  for (const alert of props.airAlerts) {
+    points.push(pointFeature(`airalert-${alert.key}`, alert.lat, alert.lon, {
+      kind: 'airalert',
+      title: `${alert.oblast} 공습경보`,
+      source: 'air_alert_ua',
+      severity: 'warning',
+      color: '#ff2d55',
+    }));
+    labels.push(pointFeature(`airalert-label-${alert.key}`, alert.lat, alert.lon, { kind: 'airalert-label', title: alert.oblast, color: '#ff6688' }));
   }
 
   for (const airport of props.airports) {
@@ -699,7 +714,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
       type: 'circle',
       source: 'airmaven-points',
       paint: {
-        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 16, 'track', 12, 'osint', 13, 'satellite', 12, 'claim', 12, 'seismic', 12, 9],
+        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 16, 'track', 12, 'osint', 13, 'satellite', 12, 'claim', 12, 'seismic', 12, 'airalert', 14, 9],
         'circle-color': [
           'match', ['get', 'kind'],
           'region-switch', '#7dffcf',
@@ -717,6 +732,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
           'ship', '#67e8f9',
           'claim', ['coalesce', ['get', 'color'], '#22ccbb'],
           'seismic', ['coalesce', ['get', 'color'], '#ff3355'],
+          'airalert', ['coalesce', ['get', 'color'], '#ff2d55'],
           '#7df9ff',
         ],
         'circle-opacity': 0.14,
@@ -731,7 +747,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
       type: 'circle',
       source: 'airmaven-points',
       paint: {
-        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 6.8, 'track', 5.4, 'osint', 5.8, 'satellite', 5.3, 'claim', 5.4, 4.2],
+        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 6.8, 'track', 5.4, 'osint', 5.8, 'satellite', 5.3, 'claim', 5.4, 'airalert', 6.6, 4.2],
         'circle-color': [
           'match', ['get', 'kind'],
           'region-switch', '#7dffcf',
@@ -749,6 +765,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
           'ship', '#67e8f9',
           'claim', ['coalesce', ['get', 'color'], '#22ccbb'],
           'seismic', ['coalesce', ['get', 'color'], '#ff3355'],
+          'airalert', ['coalesce', ['get', 'color'], '#ff2d55'],
           '#7df9ff',
         ],
         'circle-stroke-width': ['match', ['get', 'kind'], 'region-switch', 2.2, 1.2],

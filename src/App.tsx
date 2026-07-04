@@ -22,6 +22,7 @@ import { assessClaims, geolocate, type AssessedClaim } from './lib/claimVerify';
 import { fetchNotam, type NotamRow } from './lib/notamApi';
 import { fetchSeismic, type SeismicEvent } from './lib/seismicApi';
 import { fetchSatelliteModels, propagateSatellites, type SatelliteModel } from './lib/satelliteApi';
+import { fetchAirAlerts, type AirAlert } from './lib/airAlertApi';
 import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, SatellitePass, ShipTrack, ThermalAnomaly, Track } from './lib/types';
 
 type AircraftTypeFilter = 'all' | 'military' | Track['platformType'];
@@ -234,6 +235,8 @@ function App() {
   const [showNotam, setShowNotam] = useState(true);
   const [showSeismic, setShowSeismic] = useState(false);
   const [seismicEvents, setSeismicEvents] = useState<SeismicEvent[]>([]);
+  const [showAlerts, setShowAlerts] = useState(false);
+  const [airAlerts, setAirAlerts] = useState<AirAlert[]>([]);
   const [showSatellites, setShowSatellites] = useState(false);
   const [satellitePasses, setSatellitePasses] = useState<SatellitePass[]>([]);
   const satelliteModelsRef = useRef<SatelliteModel[]>([]);
@@ -674,6 +677,22 @@ function App() {
     return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
   }, [showSeismic, viewport]);
 
+  // Ukrainian air-raid alerts (@air_alert_ua) — active-alert oblasts, refreshed while the layer is
+  // on. Global (not viewport-scoped) since alerts are oblast-level and flip quickly.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || !showAlerts) return undefined;
+    let cancelled = false;
+    let controller = new AbortController();
+    const load = async () => {
+      controller = new AbortController();
+      const alerts = await fetchAirAlerts(controller.signal);
+      if (!cancelled) setAirAlerts(alerts);
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 2 * 60 * 1000);
+    return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
+  }, [showAlerts]);
+
   // Live satellites: fetch the public Celestrak catalogue (TLEs) once, then re-propagate every
   // few seconds with SGP4 on the client. Bulk view (~11k active objects incl. Starlink) — markers
   // only (no per-satellite ground tracks/labels) to stay renderable. Gated on the 위성 toggle.
@@ -732,6 +751,7 @@ function App() {
           osintEvents={scenario.osintEvents}
           claims={showOsint ? regionalClaims : []}
           seismic={showSeismic ? explosionEvents : []}
+          airAlerts={showAlerts ? airAlerts : []}
           anomalies={anomalies}
           onViewportChange={handleViewportChange}
           focusTrack={focusTrack}
@@ -771,6 +791,9 @@ function App() {
         </button>
         <button type="button" className={showSeismic ? 'is-active' : ''} onClick={() => setShowSeismic((s) => !s)} title="EMSC 얕은 진원(≤2km) 지진 = 폭발/타격 가능">
           폭발형 {showSeismic ? 'ON' : 'OFF'}
+        </button>
+        <button type="button" className={showAlerts ? 'is-active' : ''} onClick={() => setShowAlerts((s) => !s)} title="우크라이나 공습경보 (@air_alert_ua) · 오블라스트 단위 활성 경보">
+          경보 {showAlerts ? `ON · ${airAlerts.length}` : 'OFF'}
         </button>
         <button type="button" className={showSatellites ? 'is-active' : ''} onClick={() => setShowSatellites((s) => !s)} title="Celestrak TLE + SGP4 실시간 궤도 위치 (활성 위성 전체, Starlink 포함) · 줌인 시 화면 영역만 표시">
           위성 {showSatellites ? (satellitePasses.length ? `ON · 화면 ${activeSatellites.length}` : 'ON · 로딩') : 'OFF'}
