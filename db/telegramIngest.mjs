@@ -38,6 +38,58 @@ const CHANNELS = [
   { name: 'intelslava', label: '🇷🇺 Intel Slava', color: '#bb5533' },
   { name: 'serhii_flash', label: '🇺🇦 Serhii Flash (EW)', color: '#ffcc33' },
   { name: 'wild_hornets', label: '🇺🇦 Wild Hornets (UAV)', color: '#ffaa22' },
+  // --- 50 large-scale OSINT channels added 2026-07-05 (each verified reachable via live
+  // t.me/s/ scrape; channels that disable the web preview were excluded, not guessed) ---
+  { name: 'UAWeapons', label: '🇺🇦 UA Weapons', color: '#ffd633' },
+  { name: 'liveuamap', label: 'Liveuamap', color: '#4aa3df' },
+  { name: 'KyivIndependent_official', label: '🇺🇦 Kyiv Independent', color: '#3d7fd1' },
+  { name: 'Osint613', label: 'OSINT613', color: '#33bbaa' },
+  { name: 'SputnikInt', label: '🇷🇺 Sputnik Intl', color: '#cc3b2f' },
+  { name: 'Osinttechnical', label: 'OSINT Technical', color: '#5fb0d0' },
+  { name: 'ukr_leaks_eng', label: '🇺🇦 UkrLeaks', color: '#e0b530' },
+  { name: 'worldsource24', label: 'WorldSource24', color: '#8a9bb5' },
+  { name: 'Slavyangrad', label: '🇷🇺 Slavyangrad', color: '#b5432f' },
+  { name: 'Megatron_ron', label: 'Megatron', color: '#9b6fc0' },
+  { name: 'AuroraIntel', label: 'Aurora Intel', color: '#e05a8a' },
+  { name: 'IsraelWarRoom', label: '🇮🇱 Israel War Room', color: '#2f6fd1' },
+  { name: 'i24NEWS_EN', label: '🇮🇱 i24NEWS', color: '#1f9dd1' },
+  { name: 'insiderpaper', label: 'Insider Paper', color: '#c0504d' },
+  { name: 'TRTWorld', label: 'TRT World', color: '#3a8a5f' },
+  { name: 'WarClandestine', label: 'War Clandestine', color: '#7a8fb0' },
+  { name: 'clashreport', label: 'Clash Report', color: '#d08a2f' },
+  { name: 'breaking911', label: 'Breaking911', color: '#c94b4b' },
+  { name: 'WarMonitors', label: 'War Monitor', color: '#8877bb' },
+  { name: 'spectatorindex', label: 'Spectator Index', color: '#556b8f' },
+  { name: 'disclosetv', label: 'Disclose.tv', color: '#5fa0c0' },
+  { name: 'GeneralStaffZSU', label: '🇺🇦 General Staff ZSU', color: '#f0c419' },
+  { name: 'Faytuks', label: 'Faytuks Network', color: '#6699bb' },
+  { name: 'jacksonhinkle', label: 'Jackson Hinkle', color: '#cc7744' },
+  { name: 'suriyakmaps', label: 'Suriyak Maps', color: '#88bb66' },
+  { name: 'RALee85', label: 'Rob Lee (OSINT)', color: '#77aacc' },
+  { name: 'IraqiSecurity', label: '🇮🇶 Iraqi Security', color: '#aa8844' },
+  { name: 'uniannet', label: '🇺🇦 UNIAN', color: '#3d8fd1' },
+  { name: 'ukrpravda_news', label: '🇺🇦 Ukrainska Pravda', color: '#4488cc' },
+  { name: 'war_home', label: 'War Home', color: '#99667f' },
+  { name: 'RVvoenkor', label: '🇷🇺 RV Voenkor', color: '#bb4433' },
+  { name: 'wargonzo', label: '🇷🇺 WarGonzo', color: '#aa3322' },
+  { name: 'milchronicles', label: 'Military Chronicles', color: '#8fa0b5' },
+  { name: 'swodki', label: '🇷🇺 Svodki', color: '#b55544' },
+  { name: 'milinfolive', label: '🇷🇺 Military Informant', color: '#c05540' },
+  { name: 'epoddubny', label: '🇷🇺 Poddubny', color: '#aa4433' },
+  { name: 'Sladkov_plus', label: '🇷🇺 Sladkov', color: '#bb5544' },
+  { name: 'tass_agency', label: '🇷🇺 TASS', color: '#cc4433' },
+  { name: 'grey_zone', label: '🇷🇺 Grey Zone', color: '#777777' },
+  { name: 'warmonitor', label: 'War Monitor (WM)', color: '#8b7fae' },
+  { name: 'TheStudyofWar', label: 'ISW (Study of War)', color: '#5f7fb0' },
+  { name: 'ChuvKm', label: 'Chuv Km', color: '#99aabb' },
+  { name: 'bild_russian', label: '🇷🇺 BILD (RU)', color: '#b06a4a' },
+  { name: 'AJEnglish', label: 'Al Jazeera Eng', color: '#c9a83a' },
+  { name: 'vxunderground', label: 'vx-underground', color: '#66aa88' },
+  { name: 'ukrainenowenglish', label: '🇺🇦 Ukraine Now', color: '#3d8fc9' },
+  { name: 'nexta_tv', label: 'NEXTA', color: '#5fb0a0' },
+  { name: 'readovkanews', label: '🇷🇺 Readovka', color: '#bb5533' },
+  { name: 'pravda_gerashchenko', label: '🇺🇦 Gerashchenko', color: '#e0c020' },
+  { name: 'moscowtimes', label: '🇷🇺 Moscow Times', color: '#a06a5a' },
 ];
 
 const WAR_KEYWORDS = new RegExp([
@@ -67,7 +119,7 @@ const OFFTOPIC = new RegExp([
 ].join('|'), 'i');
 
 const POSTS_PER_CHANNEL = 12;
-const BATCH_SIZE = 6;
+const BATCH_SIZE = 12;  // 84 channels → ~7 batches; keeps collection within the cron time budget
 const translationCache = new Map();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
