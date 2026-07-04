@@ -26,8 +26,9 @@ type AircraftTypeFilter = 'all' | 'military' | Track['platformType'];
 
 const trackPollIntervalMs = 30_000;
 const vesselPollIntervalMs = 90_000; // AIS store updates ~every 15 min; a slow poll suffices
-const timelineWindowMs = 30 * 60 * 1000; // history playback window per frame
 const timelineSpanMs = 6 * 60 * 60 * 1000; // slider covers the last 6h
+const timelineTrailMs = 45 * 60 * 1000;    // trailing window rendered at the cursor (trails)
+const timelineStepMs = 3 * 60 * 1000;      // cursor advance per playback tick (small = smooth)
 
 const aircraftTypeOptions: Array<{ value: AircraftTypeFilter; label: string }> = [
   { value: 'all', label: '전체' },
@@ -202,12 +203,31 @@ function App() {
   const [timelineValue, setTimelineValue] = useState(() => Date.now());
   const [timelineNow, setTimelineNow] = useState(() => Date.now());
   const [historyTracks, setHistoryTracks] = useState<Track[]>([]);
+  const [historyVessels, setHistoryVessels] = useState<ShipTrack[]>([]);
   const viewportRef = useRef<Viewport | null>(null);
 
   const regionId = useMemo<RegionId>(() => (viewport ? nearestRegionId(viewport.center) : defaultRegionId), [viewport]);
   const baseScenario = useMemo(() => getScenario(regionId), [regionId]);
 
-  const sourceTracks = timelineMode ? historyTracks : viewportTracks;
+  // Timeline playback: the full 6h history is fetched once; each cursor position renders only
+  // the trailing window of points up to the cursor, so aircraft/ships glide instead of the old
+  // 30-min windows that jumped (making tracks flash in and out).
+  const displayedHistoryTracks = useMemo(() => {
+    if (!timelineMode) return [];
+    const from = timelineValue - timelineTrailMs;
+    return historyTracks
+      .map((t) => ({ ...t, points: t.points.filter((p) => { const ms = Date.parse(p.observedAt); return ms >= from && ms <= timelineValue; }) }))
+      .filter((t) => t.points.length > 0);
+  }, [historyTracks, timelineMode, timelineValue]);
+  const displayedHistoryVessels = useMemo(() => {
+    if (!timelineMode) return [];
+    const from = timelineValue - timelineTrailMs;
+    return historyVessels
+      .map((s) => ({ ...s, points: s.points.filter((p) => { const ms = Date.parse(p.observedAt); return ms >= from && ms <= timelineValue; }) }))
+      .filter((s) => s.points.length > 0);
+  }, [historyVessels, timelineMode, timelineValue]);
+
+  const sourceTracks = timelineMode ? displayedHistoryTracks : viewportTracks;
   const filteredTracks = useMemo(
     () => sourceTracks.filter((track) => {
       if (aircraftTypeFilter === 'military') { if (!track.isMilitary) return false; }
@@ -246,9 +266,10 @@ function App() {
     };
     const fusionEvents = buildFusionEvents(withLive, anomalies);
     // Live AIS vessels (viewport-polled from Neon) replace the baseline snapshot ships.
-    const withFusion = { ...withLive, fusionEvents, ships: liveVessels.length ? liveVessels : withLive.ships };
+    const ships = timelineMode ? displayedHistoryVessels : (liveVessels.length ? liveVessels : withLive.ships);
+    const withFusion = { ...withLive, fusionEvents, ships };
     return { ...withFusion, timeline: buildTimelineFromScenario(withFusion) };
-  }, [anomalies, liveNotam, liveOsint, liveVessels, mergedScenario, showNotam, showOsint]);
+  }, [anomalies, displayedHistoryVessels, liveNotam, liveOsint, liveVessels, mergedScenario, showNotam, showOsint, timelineMode]);
 
   // Reliability scoring: assess Telegram claims against thermal (FIRMS) + cross-source.
   const assessedClaims = useMemo<AssessedClaim[]>(
@@ -459,35 +480,39 @@ function App() {
     return () => { controller.abort(); window.clearTimeout(timer); };
   }, [viewport]);
 
-  // Timeline history fetch (Neon /api/history) when scrubbing.
+  // Timeline: fetch the FULL span of history (tracks + vessels) ONCE on entering timeline mode
+  // (or region change). The cursor then animates over this cache client-side — no per-frame
+  // refetch, so nothing flashes in and out.
   useEffect(() => {
     if (!timelineMode || typeof window === 'undefined') return undefined;
     let cancelled = false;
     const controller = new AbortController();
+    const now = Date.now();
+    const from = new Date(now - timelineSpanMs).toISOString();
+    const to = new Date(now).toISOString();
     void (async () => {
-      const rows = await fetchHistoryTracks({
-        region: regionId === 'global' ? undefined : regionId,
-        from: new Date(timelineValue - timelineWindowMs).toISOString(),
-        to: new Date(timelineValue).toISOString(),
-        limit: 3000,
-        signal: controller.signal,
-      });
-      if (!cancelled) setHistoryTracks(buildHistoryTracks(rows));
+      const [rows, vessels] = await Promise.all([
+        fetchHistoryTracks({ region: regionId === 'global' ? undefined : regionId, from, to, limit: 6000, signal: controller.signal }),
+        fetchVesselTracks({ bbox: viewportRef.current?.bbox, from, to, limit: 6000, signal: controller.signal }),
+      ]);
+      if (cancelled) return;
+      setHistoryTracks(buildHistoryTracks(rows));
+      setHistoryVessels(vessels);
     })();
     return () => { cancelled = true; controller.abort(); };
-  }, [regionId, timelineMode, timelineValue]);
+  }, [regionId, timelineMode]);
 
-  // Timeline auto-play.
+  // Timeline auto-play — advance the cursor in small steps for smooth motion; loop at the end.
   useEffect(() => {
     if (!timelineMode || !timelinePlaying) return undefined;
     const timer = window.setInterval(() => {
       setTimelineValue((v) => {
-        const next = v + timelineWindowMs;
-        return next > Date.now() ? Date.now() - timelineSpanMs : next;
+        const next = v + timelineStepMs;
+        return next > timelineNow ? timelineNow - timelineSpanMs + timelineTrailMs : next;
       });
-    }, 1200);
+    }, 400);
     return () => window.clearInterval(timer);
-  }, [timelineMode, timelinePlaying]);
+  }, [timelineMode, timelinePlaying, timelineNow]);
 
   // Live OSINT feed (Neon /api/osint), refreshed periodically.
   useEffect(() => {
@@ -642,7 +667,7 @@ function App() {
             max={timelineNow}
             value={timelineValue}
             playing={timelinePlaying}
-            label={`${new Date(timelineValue).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · 과거 ${historyTracks.length}건`}
+            label={`${new Date(timelineValue).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · 항적 ${displayedHistoryTracks.length} · 선박 ${displayedHistoryVessels.length}`}
             onChange={(v) => setTimelineValue(v)}
             onTogglePlay={() => setTimelinePlaying((p) => !p)}
           />
