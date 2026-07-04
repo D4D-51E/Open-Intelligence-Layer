@@ -358,8 +358,12 @@ function setOrAddGeoJsonSource(map: MapLibreMap, id: string, data: FeatureCollec
 }
 
 // OpenAIP airspace vector tiles (proxied same-origin via /api/openaip to hide the key).
-// Rendered beneath the track/point layers so aircraft stay on top. Coloured by airspace
-// `type` (OpenAIP enum): restricted/danger/prohibited emphasised, control zones in blue.
+// Rendered beneath the track/point layers so aircraft stay on top. Coloured by OpenAIP
+// classification: the tiles carry `type` and `icao_class` as lowercase STRINGS (matching
+// OpenAIP's own map style — e.g. 'prohibited', 'restricted', 'adiz', 'ctr', class 'a'..'g'),
+// NOT integers. Special-use zones (prohibited/restricted/danger/military/ADIZ) are
+// emphasised; controlled airspace falls back to an icao_class colour ramp. Keep this
+// palette in sync with the HUD legend in App.tsx (AIRSPACE_LEGEND).
 function ensureAirspaceLayers(map: MapLibreMap, visible: boolean) {
   if (!map.getSource('openaip')) {
     map.addSource('openaip', {
@@ -369,14 +373,30 @@ function ensureAirspaceLayers(map: MapLibreMap, visible: boolean) {
       maxzoom: 11,
     });
   }
+  const classColor: maplibregl.ExpressionSpecification = [
+    'match', ['get', 'icao_class'],
+    ['a', 'b'], '#5fd08a',
+    ['c', 'd'], '#5cc8ff',
+    'e', '#8ab4ff',
+    'f', '#9aa8c7',
+    'g', '#7c8aa5',
+    '#6f7d94',
+  ];
   const airspaceColor: maplibregl.ExpressionSpecification = [
     'match', ['get', 'type'],
-    1, '#ffb238',
-    2, '#ff5d47',
-    3, '#ff3f5f',
-    4, '#7dd3fc',
-    5, '#8ab4ff',
-    '#7df9ff',
+    'prohibited', '#ff2d55',
+    ['restricted', 'danger'], '#ff8a3d',
+    ['tsa', 'tra', 'tfr', 'tfa'], '#ffb238',
+    'adiz', '#e15dff',
+    ['mtr', 'mta', 'mrt', 'matz'], '#ff7a6b',
+    ['alert', 'warning', 'protected'], '#ffe14a',
+    'ctr', '#5cc8ff',
+    ['tma', 'cta'], '#7dd3fc',
+    ['tmz', 'rmz', 'tiz', 'tia', 'trp'], '#8ab4ff',
+    ['fir', 'uir', 'acc_sector', 'fis_sector'], '#6b8fb5',
+    'awy', '#67e8f9',
+    ['gliding_sector', 'vfr_sector', 'aerial_sporting_recreational', 'lta', 'uta', 'overflight_restriction', 'htz', 'atz'], '#8fce9e',
+    classColor,
   ];
   const visibility = visible ? 'visible' : 'none';
   // Only render airspace once zoomed into a detail view — at low zoom the tiles are huge

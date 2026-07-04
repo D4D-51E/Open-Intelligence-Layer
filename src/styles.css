@@ -846,6 +846,40 @@ a.track-fusion-axis__cite { color: var(--accent); }
   color: #f7fff9;
 }
 
+.globe-hud--legend {
+  top: 92px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(2, 9, 8, .72);
+  backdrop-filter: blur(7px);
+}
+.globe-hud--legend__title {
+  font: 800 9.5px/1.4 var(--mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1px;
+}
+.globe-hud--legend__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--ink);
+}
+.globe-hud--legend__row i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
+}
+
 .globe-hud--panel {
   top: 84px;
   right: 14px;

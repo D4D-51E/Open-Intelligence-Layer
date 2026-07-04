@@ -32,6 +32,18 @@ const aircraftTypeOptions: Array<{ value: AircraftTypeFilter; label: string }> =
   { value: 'unknown', label: '미식별' },
 ];
 
+// Airspace classification legend — colours MUST stay in sync with the OpenAIP
+// `airspaceColor` expression in SituationRealGlobe.tsx (ensureAirspaceLayers).
+const AIRSPACE_LEGEND: Array<{ color: string; label: string }> = [
+  { color: '#ff2d55', label: '금지 (P)' },
+  { color: '#ff8a3d', label: '제한·위험 (R/D)' },
+  { color: '#ffb238', label: '군사 예약 (TSA/TRA)' },
+  { color: '#e15dff', label: 'ADIZ 방공식별' },
+  { color: '#ffe14a', label: '경보·경계' },
+  { color: '#7dd3fc', label: '관제권 CTR/TMA' },
+  { color: '#6b8fb5', label: '정보구역·등급 A–G' },
+];
+
 function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number) {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(bLat - aLat);
@@ -438,6 +450,18 @@ function App() {
           타임라인 {timelineMode ? 'ON' : 'OFF'}
         </button>
       </div>
+
+      {showAirspace ? (
+        <div className="globe-hud globe-hud--legend" aria-label="공역 분류 범례">
+          <span className="globe-hud--legend__title">공역 분류</span>
+          {AIRSPACE_LEGEND.map((row) => (
+            <span key={row.label} className="globe-hud--legend__row">
+              <i style={{ background: row.color }} aria-hidden="true" />
+              {row.label}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <aside className="globe-hud globe-hud--panel">
         <LiveTrackPanel
