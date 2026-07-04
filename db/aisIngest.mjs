@@ -86,7 +86,12 @@ function collectRegionVessels(region, { apiKey, timeoutMs, maxShips }) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      if (socket && socket.readyState === WebSocket.OPEN) socket.close(1000, 'window complete');
+      // Hard-terminate + detach listeners so no socket handle lingers on the event loop.
+      // In serverless (Vercel/Lambda) a live handle stalls the HTTP response until the
+      // function hits maxDuration, even though the DB writes already completed.
+      if (socket) {
+        try { socket.removeAllListeners(); socket.terminate(); } catch { /* already gone */ }
+      }
       resolve([...byMmsi.values()].slice(0, maxShips));
     };
 
