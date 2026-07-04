@@ -30,6 +30,7 @@ type SituationRealGlobeProps = {
   onSelectTrack?: (trackId: string) => void;
   onSelectShip?: (shipId: string) => void;
   showAirspace?: boolean;
+  showAirways?: boolean;
 };
 
 type Coordinate = [number, number];
@@ -539,6 +540,52 @@ function setAirspaceVisibility(map: MapLibreMap, visible: boolean) {
   }
 }
 
+// South Korean enroute airways (ROK AIP ENR, 국토교통부 항공교통본부 via data.go.kr). The odcloud
+// dataset lists airway segments by named fixes only; fixes were resolved to coordinates offline
+// into static GeoJSON (public/data/kr-airways.json, one MultiLineString per airway). Dashed violet
+// lines distinguish route structure from solid airspace boundaries; labelled with the airway name.
+function ensureAirwayLayers(map: MapLibreMap, visible: boolean) {
+  const visibility = visible ? 'visible' : 'none';
+  const AIRWAY_MIN_ZOOM = 4;
+  if (!map.getSource('kr-airways')) {
+    map.addSource('kr-airways', { type: 'geojson', data: `${window.location.origin}/data/kr-airways.json` });
+  }
+  if (!map.getLayer('kr-airway-line')) {
+    map.addLayer({
+      id: 'kr-airway-line',
+      type: 'line',
+      source: 'kr-airways',
+      minzoom: AIRWAY_MIN_ZOOM,
+      layout: { visibility, 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#c084fc', 'line-width': 1.1, 'line-opacity': 0.7, 'line-dasharray': [2, 2] },
+    });
+  }
+  if (!map.getLayer('kr-airway-label')) {
+    map.addLayer({
+      id: 'kr-airway-label',
+      type: 'symbol',
+      source: 'kr-airways',
+      minzoom: 6,
+      layout: {
+        visibility,
+        'symbol-placement': 'line',
+        'text-field': ['get', 'airway'],
+        'text-size': 10,
+        'text-letter-spacing': 0.05,
+        'symbol-spacing': 220,
+      },
+      paint: { 'text-color': '#d8b4fe', 'text-halo-color': '#0a0e14', 'text-halo-width': 1.4 },
+    });
+  }
+}
+
+function setAirwayVisibility(map: MapLibreMap, visible: boolean) {
+  const visibility = visible ? 'visible' : 'none';
+  for (const id of ['kr-airway-line', 'kr-airway-label']) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility);
+  }
+}
+
 function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) {
   setOrAddGeoJsonSource(map, 'airmaven-polygons', collections.polygons);
   setOrAddGeoJsonSource(map, 'airmaven-lines', collections.lines);
@@ -765,7 +812,7 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
   const focusPopupRef = useRef<maplibregl.Popup | null>(null);
   const focusedIdRef = useRef<string | null>(null);
   const collections = useMemo(() => overlayCollections(props), [props]);
-  const latestRef = useRef<{ collections: OverlayCollections; region: Region; onRegionSelect?: (regionId: RegionId) => void; onSelectTrack?: (trackId: string) => void; onSelectShip?: (shipId: string) => void; onViewportChange?: SituationRealGlobeProps['onViewportChange']; showAirspace?: boolean }>({
+  const latestRef = useRef<{ collections: OverlayCollections; region: Region; onRegionSelect?: (regionId: RegionId) => void; onSelectTrack?: (trackId: string) => void; onSelectShip?: (shipId: string) => void; onViewportChange?: SituationRealGlobeProps['onViewportChange']; showAirspace?: boolean; showAirways?: boolean }>({
     collections,
     region: props.region,
     onRegionSelect: props.onRegionSelect,
@@ -773,11 +820,12 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
     onSelectShip: props.onSelectShip,
     onViewportChange: props.onViewportChange,
     showAirspace: props.showAirspace,
+    showAirways: props.showAirways,
   });
 
   useEffect(() => {
-    latestRef.current = { collections, region: props.region, onRegionSelect: props.onRegionSelect, onSelectTrack: props.onSelectTrack, onSelectShip: props.onSelectShip, onViewportChange: props.onViewportChange, showAirspace: props.showAirspace };
-  }, [collections, props.onRegionSelect, props.onSelectTrack, props.onSelectShip, props.onViewportChange, props.region, props.showAirspace]);
+    latestRef.current = { collections, region: props.region, onRegionSelect: props.onRegionSelect, onSelectTrack: props.onSelectTrack, onSelectShip: props.onSelectShip, onViewportChange: props.onViewportChange, showAirspace: props.showAirspace, showAirways: props.showAirways };
+  }, [collections, props.onRegionSelect, props.onSelectTrack, props.onSelectShip, props.onViewportChange, props.region, props.showAirspace, props.showAirways]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -812,6 +860,7 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
       isLoadedRef.current = true;
       const latest = latestRef.current;
       ensureAirspaceLayers(map, Boolean(latest.showAirspace));
+      ensureAirwayLayers(map, Boolean(latest.showAirways));
       ensureOverlayLayers(map, latest.collections);
       bindPointPopup(map, () => latestRef.current);
       map.on('moveend', () => {
@@ -888,6 +937,13 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
     if (!map || !isLoadedRef.current) return;
     setAirspaceVisibility(map, Boolean(props.showAirspace));
   }, [props.showAirspace]);
+
+  // Toggle ROK enroute airway layers.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoadedRef.current) return;
+    setAirwayVisibility(map, Boolean(props.showAirways));
+  }, [props.showAirways]);
 
   return (
     <div className="situation-map-shell situation-map-shell--real-globe situation-real-globe-shell" role="img" aria-label={`${props.region.shortName} 실제 지도 3D 지구본`}>

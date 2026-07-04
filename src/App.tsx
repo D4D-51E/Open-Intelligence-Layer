@@ -194,6 +194,7 @@ function App() {
   const [aircraftTypeFilter, setAircraftTypeFilter] = useState<AircraftTypeFilter>('all');
   const [minimumAltitudeM, setMinimumAltitudeM] = useState(0);
   const [showAirspace, setShowAirspace] = useState(true);
+  const [showAirways, setShowAirways] = useState(false);
   const [showOsint, setShowOsint] = useState(true);
   const [showNotam, setShowNotam] = useState(true);
   const [showSeismic, setShowSeismic] = useState(false);
@@ -603,6 +604,7 @@ function App() {
           onSelectTrack={handleSelectTrack}
           onSelectShip={handleSelectShip}
           showAirspace={showAirspace}
+          showAirways={showAirways}
         />
       </div>
 
@@ -625,6 +627,9 @@ function App() {
         </label>
         <button type="button" className={showAirspace ? 'is-active' : ''} onClick={() => setShowAirspace((s) => !s)}>
           공역 {showAirspace ? 'ON' : 'OFF'}
+        </button>
+        <button type="button" className={showAirways ? 'is-active' : ''} onClick={() => setShowAirways((s) => !s)} title="ROK 항공로 (국토교통부 항공교통본부, data.go.kr) · 줌인 시 표시">
+          항로 {showAirways ? 'ON' : 'OFF'}
         </button>
         <button type="button" className={showOsint ? 'is-active' : ''} onClick={() => setShowOsint((s) => !s)}>
           OSINT {showOsint ? 'ON' : 'OFF'}
