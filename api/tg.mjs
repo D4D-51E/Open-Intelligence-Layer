@@ -110,10 +110,18 @@ export default async function handler(req, res) {
   if (secret && req.headers['x-telegram-bot-api-secret-token'] !== secret) {
     res.status(401).json({ ok: false }); return;
   }
-  // Always ack Telegram immediately so it never retries; do the work, then reply out-of-band.
-  res.status(200).json({ ok: true });
-
+  // Do the work and send the reply BEFORE responding: on serverless the function can be frozen the
+  // moment the HTTP response is flushed, which would cut off the outbound sendMessage. Telegram
+  // waits for our response (within maxDuration), so this is safe and it still receives a 200.
   try {
+    await handleUpdate(req);
+  } catch (e) {
+    console.error('[tg] handler error:', e);
+  }
+  res.status(200).json({ ok: true });
+}
+
+async function handleUpdate(req) {
     const update = await readJson(req);
     const msg = update?.message ?? update?.edited_message;
     const text = typeof msg?.text === 'string' ? msg.text.trim() : '';
@@ -161,7 +169,4 @@ export default async function handler(req, res) {
     }
 
     await reply(chatId, `알 수 없는 명령입니다.\n\n${HELP}`);
-  } catch (e) {
-    console.error('[tg] handler error:', e);
-  }
 }
