@@ -14,3 +14,4 @@ output/playwright/
 test-results/
 .wrangler/
 *.tsbuildinfo
+.vercel

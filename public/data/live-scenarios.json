@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-04T08:25:02.480Z",
+  "generatedAt": "2026-07-04T09:05:02.610Z",
   "mode": "public-live-cache",
   "refreshPolicy": {
     "browserPollMs": 30000,
@@ -719,7 +719,7 @@
       "sourceReasons": {
         "opensky": "전세계 OpenSky 전체 조회는 비용/제한 때문에 비활성입니다. 상세 AOI 선택 시 수집합니다.",
         "openMeteo": "전세계 단일 중심점 기상은 의미가 낮아 비활성입니다. 상세 AOI에서 조회합니다.",
-        "gdelt": "429 backoff until 2026-07-04T08:43:11.148Z",
+        "gdelt": "429 backoff until 2026-07-04T09:15:02.518Z",
         "copernicusStac": "전세계 Copernicus STAC 조회는 비용/응답량 때문에 비활성입니다. 상세 AOI 선택 시 조회합니다.",
         "nasaFirms": "전세계 NASA FIRMS 조회는 거래량이 커서 비활성입니다. 상세 AOI 선택 시 조회합니다.",
         "ais": "전세계 AIS 전체 WebSocket 구독은 비활성입니다. 상세 AOI 선택 시 수집합니다.",
@@ -729,211 +729,391 @@
         "osintEvents": "OSINT 기사 기반 AOI 검토 포인트입니다. 기사 본문 자동 지오코딩/정확 위치 주장은 하지 않습니다."
       },
       "sourceUpdatedAt": {
-        "googleNews": "2026-07-04T08:25:02.480Z",
-        "ourAirports": "2026-07-04T08:25:02.480Z",
-        "airRoutes": "2026-07-04T08:25:02.480Z",
-        "osintEvents": "2026-07-04T08:25:02.480Z"
+        "googleNews": "2026-07-04T09:05:02.610Z",
+        "ourAirports": "2026-07-04T09:05:02.610Z",
+        "airRoutes": "2026-07-04T09:05:02.610Z",
+        "osintEvents": "2026-07-04T09:05:02.610Z"
       }
     },
     "taiwan-strait": {
       "tracks": [
         {
-          "id": "live-taiwan-strait-7822a2",
+          "id": "live-taiwan-strait-a83f8c",
           "source": "opensky-cache",
-          "callsign": "CQH6523",
-          "originCountry": "China",
-          "icao24": "7822a2",
+          "callsign": "UPS59D",
+          "originCountry": "United States",
+          "icao24": "a83f8c",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.3844,
-              "lon": 118.9309,
-              "altitudeM": 10394,
-              "velocityMs": 238.5,
-              "headingDeg": 229,
-              "observedAt": "2026-07-04T08:24:59.000Z"
+              "lat": 23.6494,
+              "lon": 120.2194,
+              "altitudeM": 9449,
+              "velocityMs": 264.6,
+              "headingDeg": 44,
+              "observedAt": "2026-07-04T09:05:04.000Z"
             }
           ]
         },
         {
-          "id": "live-taiwan-strait-789293",
+          "id": "live-taiwan-strait-8682da",
           "source": "opensky-cache",
-          "callsign": "HKE687",
-          "originCountry": "China",
-          "icao24": "789293",
+          "callsign": "JAL26",
+          "originCountry": "Japan",
+          "icao24": "8682da",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 23.9001,
-              "lon": 119.9785,
-              "altitudeM": 10973,
+              "lat": 24.195,
+              "lon": 120.7911,
+              "altitudeM": 10668,
+              "velocityMs": 255.8,
+              "headingDeg": 44,
+              "observedAt": "2026-07-04T09:05:03.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-taiwan-strait-789275",
+          "source": "opensky-cache",
+          "callsign": "CPA527",
+          "originCountry": "China",
+          "icao24": "789275",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 24.1996,
+              "lon": 120.3484,
+              "altitudeM": 12192,
+              "velocityMs": 252.3,
+              "headingDeg": 227,
+              "observedAt": "2026-07-04T09:05:04.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-taiwan-strait-780abb",
+          "source": "opensky-cache",
+          "callsign": "CPA500",
+          "originCountry": "China",
+          "icao24": "780abb",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 23.6636,
+              "lon": 120.2344,
+              "altitudeM": 12497,
+              "velocityMs": 244.9,
+              "headingDeg": 44,
+              "observedAt": "2026-07-04T09:05:03.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-taiwan-strait-789284",
+          "source": "opensky-cache",
+          "callsign": "HKE694",
+          "originCountry": "China",
+          "icao24": "789284",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 23.6891,
+              "lon": 120.2604,
+              "altitudeM": 10668,
               "velocityMs": 234.3,
-              "headingDeg": 226,
-              "observedAt": "2026-07-04T08:24:06.000Z"
+              "headingDeg": 44,
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-taiwan-strait-7801d4",
+          "id": "live-taiwan-strait-78206a",
           "source": "opensky-cache",
-          "callsign": "HKE833",
+          "callsign": "CXA8032",
           "originCountry": "China",
-          "icao24": "7801d4",
+          "icao24": "78206a",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.2598,
-              "lon": 120.3858,
-              "altitudeM": 11582,
-              "velocityMs": 232.1,
+              "lat": 25.2483,
+              "lon": 120.0873,
+              "altitudeM": 11003,
+              "velocityMs": 232.6,
+              "headingDeg": 217,
+              "observedAt": "2026-07-04T09:03:02.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-taiwan-strait-78929e",
+          "source": "opensky-cache",
+          "callsign": "CRK641",
+          "originCountry": "China",
+          "icao24": "78929e",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 24.3504,
+              "lon": 120.4887,
+              "altitudeM": 10363,
+              "velocityMs": 232.5,
               "headingDeg": 226,
-              "observedAt": "2026-07-04T08:25:02.000Z"
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-taiwan-strait-899116",
+          "id": "live-taiwan-strait-8990ec",
           "source": "opensky-cache",
-          "callsign": "CAL910",
+          "callsign": "CAL082",
           "originCountry": "Taiwan",
-          "icao24": "899116",
+          "icao24": "8990ec",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 23.6585,
-              "lon": 119.9041,
+              "lat": 23.595,
+              "lon": 119.8609,
               "altitudeM": 8839,
-              "velocityMs": 231.3,
+              "velocityMs": 208.2,
               "headingDeg": 33,
-              "observedAt": "2026-07-04T08:24:49.000Z"
+              "observedAt": "2026-07-04T09:04:23.000Z"
             }
           ]
         },
         {
-          "id": "live-taiwan-strait-71c323",
+          "id": "live-taiwan-strait-8991d8",
           "source": "opensky-cache",
-          "callsign": "TWB672",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c323",
+          "callsign": "SJX331",
+          "originCountry": "Taiwan",
+          "icao24": "8991d8",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.0094,
-              "lon": 120.5694,
-              "altitudeM": 9197,
-              "velocityMs": 228.3,
-              "headingDeg": 37,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lat": 23.8491,
+              "lon": 120.0404,
+              "altitudeM": 5532,
+              "velocityMs": 204.3,
+              "headingDeg": 236,
+              "observedAt": "2026-07-04T09:03:17.000Z"
             }
           ]
         },
         {
-          "id": "live-taiwan-strait-76bd46",
+          "id": "live-taiwan-strait-89905b",
           "source": "opensky-cache",
-          "callsign": "TGW872",
-          "originCountry": "Singapore",
-          "icao24": "76bd46",
+          "callsign": "TTW261",
+          "originCountry": "Taiwan",
+          "icao24": "89905b",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.0732,
-              "lon": 120.4019,
-              "altitudeM": 7239,
-              "velocityMs": 215.9,
+              "lat": 23.8957,
+              "lon": 120.5047,
+              "altitudeM": 6332,
+              "velocityMs": 203.1,
+              "headingDeg": 212,
+              "observedAt": "2026-07-04T09:05:01.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-taiwan-strait-89905d",
+          "source": "opensky-cache",
+          "callsign": "TTW551",
+          "originCountry": "Taiwan",
+          "icao24": "89905d",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 24.8379,
+              "lon": 120.6237,
+              "altitudeM": 5593,
+              "velocityMs": 200.4,
+              "headingDeg": 224,
+              "observedAt": "2026-07-04T09:05:03.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-taiwan-strait-780e05",
+          "source": "opensky-cache",
+          "callsign": "CSN3097",
+          "originCountry": "China",
+          "icao24": "780e05",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 23.9612,
+              "lon": 120.1139,
+              "altitudeM": 7369,
+              "velocityMs": 200.4,
+              "headingDeg": 33,
+              "observedAt": "2026-07-04T09:04:58.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-taiwan-strait-89906e",
+          "source": "opensky-cache",
+          "callsign": "EVA870",
+          "originCountry": "Taiwan",
+          "icao24": "89906e",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 24.1124,
+              "lon": 120.2185,
+              "altitudeM": 6866,
+              "velocityMs": 194.1,
+              "headingDeg": 33,
+              "observedAt": "2026-07-04T09:04:44.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-taiwan-strait-8990e5",
+          "source": "opensky-cache",
+          "callsign": "EVA392",
+          "originCountry": "Taiwan",
+          "icao24": "8990e5",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 24.3168,
+              "lon": 120.4866,
+              "altitudeM": 6881,
+              "velocityMs": 191.2,
               "headingDeg": 18,
-              "observedAt": "2026-07-04T08:25:02.000Z"
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-taiwan-strait-89914b",
+          "id": "live-taiwan-strait-88516b",
           "source": "opensky-cache",
-          "callsign": "MDA375",
-          "originCountry": "Taiwan",
-          "icao24": "89914b",
+          "callsign": "THA634",
+          "originCountry": "Thailand",
+          "icao24": "88516b",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.4487,
-              "lon": 120.5869,
-              "altitudeM": 4267,
-              "velocityMs": 109,
-              "headingDeg": 231,
-              "observedAt": "2026-07-04T08:25:02.000Z"
+              "lat": 24.5468,
+              "lon": 120.5628,
+              "altitudeM": 4923,
+              "velocityMs": 175.6,
+              "headingDeg": 19,
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-taiwan-strait-899138",
+          "id": "live-taiwan-strait-789206",
           "source": "opensky-cache",
-          "callsign": "UIA8652",
-          "originCountry": "Taiwan",
-          "icao24": "899138",
+          "callsign": "HKE114",
+          "originCountry": "China",
+          "icao24": "789206",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.5562,
-              "lon": 120.4753,
-              "altitudeM": 1326,
-              "velocityMs": 96.7,
-              "headingDeg": 90,
-              "observedAt": "2026-07-04T08:23:17.000Z"
+              "lat": 24.7825,
+              "lon": 120.7177,
+              "altitudeM": 4389,
+              "velocityMs": 141.7,
+              "headingDeg": 42,
+              "observedAt": "2026-07-04T09:05:02.000Z"
             }
           ]
         },
         {
-          "id": "live-taiwan-strait-8990f2",
+          "id": "live-taiwan-strait-89913a",
           "source": "opensky-cache",
-          "callsign": "MDA2372",
+          "callsign": "UIA8925",
           "originCountry": "Taiwan",
-          "icao24": "8990f2",
+          "icao24": "89913a",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 23.479,
-              "lon": 119.6202,
-              "altitudeM": 899,
-              "velocityMs": 89.5,
-              "headingDeg": 148,
-              "observedAt": "2026-07-04T08:24:17.000Z"
+              "lat": 23.4278,
+              "lon": 119.5282,
+              "altitudeM": 3071,
+              "velocityMs": 135.3,
+              "headingDeg": 322,
+              "observedAt": "2026-07-04T09:04:28.000Z"
             }
           ]
         },
         {
-          "id": "live-taiwan-strait-89914f",
+          "id": "live-taiwan-strait-8990bb",
           "source": "opensky-cache",
-          "callsign": "MDA791",
+          "callsign": "SJX303",
           "originCountry": "Taiwan",
-          "icao24": "89914f",
+          "icao24": "8990bb",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.2138,
-              "lon": 120.5318,
-              "altitudeM": 1494,
-              "velocityMs": 78,
-              "headingDeg": 239,
-              "observedAt": "2026-07-04T08:25:01.000Z"
+              "lat": 24.5344,
+              "lon": 120.7131,
+              "altitudeM": 1600,
+              "velocityMs": 120.3,
+              "headingDeg": 240,
+              "observedAt": "2026-07-04T09:04:45.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-taiwan-strait-899051",
+          "source": "opensky-cache",
+          "callsign": "MDA343",
+          "originCountry": "Taiwan",
+          "icao24": "899051",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 23.6165,
+              "lon": 119.6453,
+              "altitudeM": 251,
+              "velocityMs": 56,
+              "headingDeg": 199,
+              "observedAt": "2026-07-04T09:02:24.000Z"
             }
           ]
         }
@@ -943,10 +1123,10 @@
         "id": "live-wx-taiwan-strait",
         "source": "open-meteo-cache",
         "regionId": "taiwan-strait",
-        "observedAt": "2026-07-04T08:15:00Z",
-        "temperatureC": 29.2,
-        "windSpeedKmh": 33,
-        "windGustKmh": 41.4,
+        "observedAt": "2026-07-04T09:00:00Z",
+        "temperatureC": 28.9,
+        "windSpeedKmh": 29.5,
+        "windGustKmh": 37.4,
         "visibilityM": 21140,
         "cloudCoverPct": 0,
         "precipitationMm": 0,
@@ -1431,7 +1611,7 @@
         "osintEvents": "live"
       },
       "sourceReasons": {
-        "gdelt": "429 backoff until 2026-07-04T08:43:11.148Z",
+        "gdelt": "429 backoff until 2026-07-04T09:15:02.518Z",
         "copernicusStac": "TTL 6시간 내 Copernicus STAC 캐시 재사용",
         "nasaFirms": "TTL 60분 내 NASA FIRMS 캐시 재사용",
         "ais": "WebSocket 연결 성공, 20초 window 수신 0",
@@ -1441,14 +1621,14 @@
         "osintEvents": "OSINT 기사 기반 AOI 검토 포인트입니다. 기사 본문 자동 지오코딩/정확 위치 주장은 하지 않습니다."
       },
       "sourceUpdatedAt": {
-        "opensky": "2026-07-04T08:25:02.480Z",
-        "openMeteo": "2026-07-04T08:25:02.480Z",
-        "googleNews": "2026-07-04T08:25:02.480Z",
+        "opensky": "2026-07-04T09:05:02.610Z",
+        "openMeteo": "2026-07-04T09:05:02.610Z",
+        "googleNews": "2026-07-04T09:05:02.610Z",
         "nasaFirms": "2026-07-04T08:18:11.148Z",
-        "ais": "2026-07-04T08:25:02.480Z",
-        "ourAirports": "2026-07-04T08:25:02.480Z",
-        "airRoutes": "2026-07-04T08:25:02.480Z",
-        "osintEvents": "2026-07-04T08:25:02.480Z",
+        "ais": "2026-07-04T09:05:02.610Z",
+        "ourAirports": "2026-07-04T09:05:02.610Z",
+        "airRoutes": "2026-07-04T09:05:02.610Z",
+        "osintEvents": "2026-07-04T09:05:02.610Z",
         "copernicusStac": "2026-07-04T03:08:16.504Z",
         "icaoFir": "2026-07-04T03:08:16.504Z"
       }
@@ -1456,582 +1636,542 @@
     "seoul-airspace": {
       "tracks": [
         {
-          "id": "live-seoul-airspace-3965a7",
+          "id": "live-seoul-airspace-461f56",
           "source": "opensky-cache",
-          "callsign": "AFR274",
-          "originCountry": "France",
-          "icao24": "3965a7",
+          "callsign": "FIN69",
+          "originCountry": "Finland",
+          "icao24": "461f56",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.1044,
-              "lon": 124.7605,
-              "altitudeM": 10668,
-              "velocityMs": 296.9,
-              "headingDeg": 89,
-              "observedAt": "2026-07-04T08:24:49.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-4bb195",
-          "source": "opensky-cache",
-          "callsign": "THY300",
-          "originCountry": "Turkey",
-          "icao24": "4bb195",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.3473,
-              "lon": 126.8749,
-              "altitudeM": 11887,
-              "velocityMs": 296.1,
-              "headingDeg": 71,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-4ba954",
-          "source": "opensky-cache",
-          "callsign": "THY198",
-          "originCountry": "Turkey",
-          "icao24": "4ba954",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.1513,
-              "lon": 125.5989,
-              "altitudeM": 11278,
-              "velocityMs": 295.4,
+              "lat": 37.134,
+              "lon": 124.9636,
+              "altitudeM": 12497,
+              "velocityMs": 291.7,
               "headingDeg": 86,
-              "observedAt": "2026-07-04T08:25:02.000Z"
+              "observedAt": "2026-07-04T09:05:04.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-4bb186",
+          "id": "live-seoul-airspace-861b47",
           "source": "opensky-cache",
-          "callsign": "THY86",
-          "originCountry": "Turkey",
-          "icao24": "4bb186",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.1255,
-              "lon": 125.0774,
-              "altitudeM": 11887,
-              "velocityMs": 295,
-              "headingDeg": 88,
-              "observedAt": "2026-07-04T08:25:02.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-06a2b8",
-          "source": "opensky-cache",
-          "callsign": "QTR806",
-          "originCountry": "Qatar",
-          "icao24": "06a2b8",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.2024,
-              "lon": 127.8146,
-              "altitudeM": 10668,
-              "velocityMs": 293.4,
-              "headingDeg": 102,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-8694b6",
-          "source": "opensky-cache",
-          "callsign": "ANA962",
+          "callsign": "ANA8502",
           "originCountry": "Japan",
-          "icao24": "8694b6",
+          "icao24": "861b47",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.1748,
-              "lon": 125.9243,
-              "altitudeM": 8230,
-              "velocityMs": 249.3,
+              "lat": 37.1796,
+              "lon": 126.0296,
+              "altitudeM": 8839,
+              "velocityMs": 253.9,
               "headingDeg": 87,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c510",
+          "id": "live-seoul-airspace-71bf06",
           "source": "opensky-cache",
-          "callsign": "AAR114",
+          "callsign": "KAL1185",
           "originCountry": "Republic of Korea",
-          "icao24": "71c510",
+          "icao24": "71bf06",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.5244,
-              "lon": 127.6099,
-              "altitudeM": 7658,
-              "velocityMs": 238.6,
-              "headingDeg": 79,
-              "observedAt": "2026-07-04T08:25:02.000Z"
+              "lat": 36.9763,
+              "lon": 126.7656,
+              "altitudeM": 6096,
+              "velocityMs": 209,
+              "headingDeg": 169,
+              "observedAt": "2026-07-04T09:05:04.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-780895",
+          "id": "live-seoul-airspace-4aca66",
           "source": "opensky-cache",
-          "callsign": "CDG8086",
+          "callsign": "SAS987",
+          "originCountry": "Sweden",
+          "icao24": "4aca66",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.2032,
+              "lon": 125.7355,
+              "altitudeM": 3871,
+              "velocityMs": 203.7,
+              "headingDeg": 91,
+              "observedAt": "2026-07-04T09:05:04.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-71ba09",
+          "source": "opensky-cache",
+          "callsign": "KAL677",
+          "originCountry": "Republic of Korea",
+          "icao24": "71ba09",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.2512,
+              "lon": 126.3614,
+              "altitudeM": 4328,
+              "velocityMs": 193.5,
+              "headingDeg": 132,
+              "observedAt": "2026-07-04T09:05:03.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-780839",
+          "source": "opensky-cache",
+          "callsign": "CSZ632",
           "originCountry": "China",
-          "icao24": "780895",
+          "icao24": "780839",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.2722,
-              "lon": 127.1336,
-              "altitudeM": 9144,
-              "velocityMs": 218.7,
-              "headingDeg": 286,
-              "observedAt": "2026-07-04T08:25:02.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-a2a3b5",
-          "source": "opensky-cache",
-          "callsign": "UAL892",
-          "originCountry": "United States",
-          "icao24": "a2a3b5",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4523,
-              "lon": 127.1628,
-              "altitudeM": 5745,
-              "velocityMs": 205.8,
-              "headingDeg": 78,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c244",
-          "source": "opensky-cache",
-          "callsign": "JNA473",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c244",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4234,
-              "lon": 127.4322,
-              "altitudeM": 5372,
-              "velocityMs": 199.4,
-              "headingDeg": 224,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c565",
-          "source": "opensky-cache",
-          "callsign": "TWB795",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c565",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.102,
-              "lon": 126.6676,
-              "altitudeM": 4846,
-              "velocityMs": 199.4,
-              "headingDeg": 165,
-              "observedAt": "2026-07-04T08:25:02.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-a7615f",
-          "source": "opensky-cache",
-          "callsign": "DAL171",
-          "originCountry": "United States",
-          "icao24": "a7615f",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.1593,
-              "lon": 127.3173,
-              "altitudeM": 4511,
-              "velocityMs": 191.9,
-              "headingDeg": 269,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c364",
-          "source": "opensky-cache",
-          "callsign": "AAR340",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c364",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.1976,
-              "lon": 125.4492,
-              "altitudeM": 5128,
-              "velocityMs": 190.9,
-              "headingDeg": 84,
-              "observedAt": "2026-07-04T08:24:59.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71bf50",
-          "source": "opensky-cache",
-          "callsign": "JNA271",
-          "originCountry": "Republic of Korea",
-          "icao24": "71bf50",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4313,
-              "lon": 126.7865,
-              "altitudeM": 5570,
-              "velocityMs": 190.9,
-              "headingDeg": 138,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71bf86",
-          "source": "opensky-cache",
-          "callsign": "JNA236",
-          "originCountry": "Republic of Korea",
-          "icao24": "71bf86",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.0827,
-              "lon": 127.5271,
-              "altitudeM": 5189,
+              "lat": 36.9301,
+              "lon": 126.5517,
+              "altitudeM": 6728,
               "velocityMs": 186.8,
-              "headingDeg": 305,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "headingDeg": 165,
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c584",
+          "id": "live-seoul-airspace-71c051",
           "source": "opensky-cache",
-          "callsign": "AAR133",
+          "callsign": "JJA1328",
           "originCountry": "Republic of Korea",
-          "icao24": "71c584",
+          "icao24": "71c051",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 36.9552,
-              "lon": 127.6841,
-              "altitudeM": 5601,
-              "velocityMs": 186.7,
-              "headingDeg": 332,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lat": 37.0055,
+              "lon": 127.6524,
+              "altitudeM": 4450,
+              "velocityMs": 179.1,
+              "headingDeg": 303,
+              "observedAt": "2026-07-04T09:05:04.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-88510e",
+          "id": "live-seoul-airspace-7808c8",
           "source": "opensky-cache",
-          "callsign": "THA653",
-          "originCountry": "Thailand",
-          "icao24": "88510e",
+          "callsign": "CCA126",
+          "originCountry": "China",
+          "icao24": "7808c8",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.4824,
+              "lon": 126.1257,
+              "altitudeM": 2530,
+              "velocityMs": 148.7,
+              "headingDeg": 258,
+              "observedAt": "2026-07-04T09:05:03.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-aa9136",
+          "source": "opensky-cache",
+          "callsign": "ASA119",
+          "originCountry": "United States",
+          "icao24": "aa9136",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.2418,
+              "lon": 126.9981,
+              "altitudeM": 3254,
+              "velocityMs": 147,
+              "headingDeg": 250,
+              "observedAt": "2026-07-04T09:05:04.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-71be45",
+          "source": "opensky-cache",
+          "callsign": "AIH958",
+          "originCountry": "Republic of Korea",
+          "icao24": "71be45",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.1455,
+              "lon": 126.768,
+              "altitudeM": 2080,
+              "velocityMs": 145.3,
+              "headingDeg": 317,
+              "observedAt": "2026-07-04T09:05:02.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-71c543",
+          "source": "opensky-cache",
+          "callsign": "ESR820",
+          "originCountry": "Republic of Korea",
+          "icao24": "71c543",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
               "lat": 37.1843,
-              "lon": 126.32,
-              "altitudeM": 4511,
-              "velocityMs": 186.7,
-              "headingDeg": 152,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lon": 126.2842,
+              "altitudeM": 1585,
+              "velocityMs": 142,
+              "headingDeg": 91,
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c070",
+          "id": "live-seoul-airspace-71c742",
           "source": "opensky-cache",
-          "callsign": "TWB926",
+          "callsign": "PTA6502",
           "originCountry": "Republic of Korea",
-          "icao24": "71c070",
+          "icao24": "71c742",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.0149,
-              "lon": 127.6203,
-              "altitudeM": 4732,
-              "velocityMs": 184.5,
-              "headingDeg": 304,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lat": 37.2096,
+              "lon": 127.1894,
+              "altitudeM": 2499,
+              "velocityMs": 139,
+              "headingDeg": 340,
+              "observedAt": "2026-07-04T09:05:04.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c306",
+          "id": "live-seoul-airspace-71c032",
           "source": "opensky-cache",
-          "callsign": "TWB606",
+          "callsign": "JJA226",
           "originCountry": "Republic of Korea",
-          "icao24": "71c306",
+          "icao24": "71c032",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.1087,
-              "lon": 125.8324,
-              "altitudeM": 4031,
-              "velocityMs": 180.7,
-              "headingDeg": 96,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lat": 36.9263,
+              "lon": 127.6598,
+              "altitudeM": 1699,
+              "velocityMs": 109.2,
+              "headingDeg": 142,
+              "observedAt": "2026-07-04T09:05:04.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c714",
+          "id": "live-seoul-airspace-71c011",
           "source": "opensky-cache",
-          "callsign": "PTA504",
+          "callsign": "KAL036",
           "originCountry": "Republic of Korea",
-          "icao24": "71c714",
+          "icao24": "71c011",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.1476,
-              "lon": 127.1188,
-              "altitudeM": 3383,
-              "velocityMs": 171.8,
-              "headingDeg": 285,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lat": 37.2876,
+              "lon": 126.6143,
+              "altitudeM": 1257,
+              "velocityMs": 108.2,
+              "headingDeg": 325,
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-76cc75",
+          "id": "live-seoul-airspace-71aa64",
           "source": "opensky-cache",
-          "callsign": "SIA601",
-          "originCountry": "Singapore",
-          "icao24": "76cc75",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.3487,
-              "lon": 126.2219,
-              "altitudeM": 3094,
-              "velocityMs": 152.1,
-              "headingDeg": 131,
-              "observedAt": "2026-07-04T08:25:02.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c338",
-          "source": "opensky-cache",
-          "callsign": "AIH182",
+          "callsign": "XUM2597",
           "originCountry": "Republic of Korea",
-          "icao24": "71c338",
+          "icao24": "71aa64",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.6123,
-              "lon": 126.579,
-              "altitudeM": 2751,
-              "velocityMs": 151.8,
-              "headingDeg": 137,
-              "observedAt": "2026-07-04T08:25:02.000Z"
+              "lat": 37.5527,
+              "lon": 126.6807,
+              "altitudeM": 1585,
+              "velocityMs": 106.6,
+              "headingDeg": 177,
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71bf75",
+          "id": "live-seoul-airspace-ab839d",
           "source": "opensky-cache",
-          "callsign": "AAR370",
+          "callsign": "AAL280",
+          "originCountry": "United States",
+          "icao24": "ab839d",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.4942,
+              "lon": 126.4259,
+              "altitudeM": 366,
+              "velocityMs": 102.6,
+              "headingDeg": 327,
+              "observedAt": "2026-07-04T09:05:03.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-71c282",
+          "source": "opensky-cache",
+          "callsign": "AAR1165",
           "originCountry": "Republic of Korea",
-          "icao24": "71bf75",
+          "icao24": "71c282",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 36.9608,
-              "lon": 126.6646,
-              "altitudeM": 2873,
-              "velocityMs": 150.7,
-              "headingDeg": 288,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lat": 37.5695,
+              "lon": 126.7794,
+              "altitudeM": 389,
+              "velocityMs": 85.9,
+              "headingDeg": 314,
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-4ba949",
+          "id": "live-seoul-airspace-71be05",
           "source": "opensky-cache",
-          "callsign": "THY90",
-          "originCountry": "Turkey",
-          "icao24": "4ba949",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.1444,
-              "lon": 126.3157,
-              "altitudeM": 1509,
-              "velocityMs": 136.5,
-              "headingDeg": 78,
-              "observedAt": "2026-07-04T08:25:02.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c272",
-          "source": "opensky-cache",
-          "callsign": "KAL1405",
+          "callsign": "KAL318",
           "originCountry": "Republic of Korea",
-          "icao24": "71c272",
+          "icao24": "71be05",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.6485,
-              "lon": 126.3758,
-              "altitudeM": 1745,
-              "velocityMs": 135.3,
-              "headingDeg": 56,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lat": 37.3706,
+              "lon": 126.541,
+              "altitudeM": 678,
+              "velocityMs": 85.6,
+              "headingDeg": 325,
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c547",
+          "id": "live-seoul-airspace-71c255",
           "source": "opensky-cache",
-          "callsign": "TWB644",
+          "callsign": "ASV728",
           "originCountry": "Republic of Korea",
-          "icao24": "71c547",
+          "icao24": "71c255",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.2017,
-              "lon": 126.6856,
-              "altitudeM": 1852,
-              "velocityMs": 123.7,
-              "headingDeg": 328,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lat": 37.4503,
+              "lon": 126.4701,
+              "altitudeM": 122,
+              "velocityMs": 71.9,
+              "headingDeg": 325,
+              "observedAt": "2026-07-04T09:04:56.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71bf07",
+          "id": "live-seoul-airspace-71ce27",
           "source": "opensky-cache",
-          "callsign": "KAL844",
+          "callsign": "HL9627",
           "originCountry": "Republic of Korea",
-          "icao24": "71bf07",
+          "icao24": "71ce27",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.1733,
-              "lon": 126.4975,
-              "altitudeM": 853,
-              "velocityMs": 122,
-              "headingDeg": 77,
-              "observedAt": "2026-07-04T08:25:02.000Z"
+              "lat": 37.4267,
+              "lon": 126.6589,
+              "altitudeM": 351,
+              "velocityMs": 59.2,
+              "headingDeg": 50,
+              "observedAt": "2026-07-04T09:05:03.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c587",
+          "id": "live-seoul-airspace-8963e8",
           "source": "opensky-cache",
-          "callsign": "ESR284",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c587",
-          "platformType": "commercial",
+          "callsign": "UAE322",
+          "originCountry": "United Arab Emirates",
+          "icao24": "8963e8",
+          "platformType": "unknown",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.3124,
-              "lon": 127.1012,
-              "altitudeM": 2050,
-              "velocityMs": 117.9,
-              "headingDeg": 315,
-              "observedAt": "2026-07-04T08:25:02.000Z"
+              "lat": 37.4473,
+              "lon": 126.4409,
+              "altitudeM": 0,
+              "velocityMs": 7.7,
+              "headingDeg": 143,
+              "observedAt": "2026-07-04T09:02:10.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c378",
+          "id": "live-seoul-airspace-71c581",
           "source": "opensky-cache",
-          "callsign": "TWB686",
+          "callsign": "TWB008",
           "originCountry": "Republic of Korea",
-          "icao24": "71c378",
-          "platformType": "commercial",
+          "icao24": "71c581",
+          "platformType": "unknown",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 36.8677,
-              "lon": 127.7116,
-              "altitudeM": 1341,
-              "velocityMs": 102.8,
-              "headingDeg": 169,
-              "observedAt": "2026-07-04T08:25:02.000Z"
+              "lat": 37.4539,
+              "lon": 126.438,
+              "altitudeM": 0,
+              "velocityMs": 6.4,
+              "headingDeg": 51,
+              "observedAt": "2026-07-04T09:04:47.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-84b40d",
+          "source": "opensky-cache",
+          "callsign": "APJ768",
+          "originCountry": "Japan",
+          "icao24": "84b40d",
+          "platformType": "unknown",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.5612,
+              "lon": 126.7932,
+              "altitudeM": 0,
+              "velocityMs": 5.9,
+              "headingDeg": 135,
+              "observedAt": "2026-07-04T09:00:24.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-71c374",
+          "source": "opensky-cache",
+          "callsign": "ESR672",
+          "originCountry": "Republic of Korea",
+          "icao24": "71c374",
+          "platformType": "unknown",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.4547,
+              "lon": 126.4578,
+              "altitudeM": 0,
+              "velocityMs": 5.9,
+              "headingDeg": 143,
+              "observedAt": "2026-07-04T09:04:44.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-71c086",
+          "source": "opensky-cache",
+          "callsign": "TWB728",
+          "originCountry": "Republic of Korea",
+          "icao24": "71c086",
+          "platformType": "unknown",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.5604,
+              "lon": 126.7942,
+              "altitudeM": 0,
+              "velocityMs": 5.4,
+              "headingDeg": 135,
+              "observedAt": "2026-07-04T09:04:46.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-71c394",
+          "source": "opensky-cache",
+          "callsign": "ABL8820",
+          "originCountry": "Republic of Korea",
+          "icao24": "71c394",
+          "platformType": "unknown",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.5565,
+              "lon": 126.8038,
+              "altitudeM": 0,
+              "velocityMs": 3.6,
+              "headingDeg": 45,
+              "observedAt": "2026-07-04T09:02:25.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-seoul-airspace-71c594",
+          "source": "opensky-cache",
+          "callsign": "JJA2315",
+          "originCountry": "Republic of Korea",
+          "icao24": "71c594",
+          "platformType": "unknown",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 37.4525,
+              "lon": 126.4378,
+              "altitudeM": 0,
+              "velocityMs": 3.1,
+              "headingDeg": 143,
+              "observedAt": "2026-07-04T09:02:50.000Z"
             }
           ]
         },
@@ -2041,417 +2181,57 @@
           "callsign": "CSH827",
           "originCountry": "China",
           "icao24": "78155f",
-          "platformType": "commercial",
+          "platformType": "unknown",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.2938,
-              "lon": 126.5686,
-              "altitudeM": 853,
-              "velocityMs": 99.3,
-              "headingDeg": 325,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "lat": 37.4555,
+              "lon": 126.4427,
+              "altitudeM": 0,
+              "velocityMs": 0,
+              "headingDeg": 146,
+              "observedAt": "2026-07-04T09:01:21.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c098",
+          "id": "live-seoul-airspace-71c309",
           "source": "opensky-cache",
-          "callsign": "TWB796",
+          "callsign": "ABL8019",
           "originCountry": "Republic of Korea",
-          "icao24": "71c098",
-          "platformType": "commercial",
+          "icao24": "71c309",
+          "platformType": "unknown",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.4403,
-              "lon": 126.9417,
-              "altitudeM": 953,
-              "velocityMs": 97.5,
-              "headingDeg": 314,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c556",
-          "source": "opensky-cache",
-          "callsign": "KAL771",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c556",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.5179,
-              "lon": 126.4073,
-              "altitudeM": 846,
-              "velocityMs": 97,
-              "headingDeg": 327,
-              "observedAt": "2026-07-04T08:25:02.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71be37",
-          "source": "opensky-cache",
-          "callsign": "KAL018",
-          "originCountry": "Republic of Korea",
-          "icao24": "71be37",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4084,
-              "lon": 126.5073,
-              "altitudeM": 411,
-              "velocityMs": 81.9,
-              "headingDeg": 325,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c302",
-          "source": "opensky-cache",
-          "callsign": "JJA126",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c302",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.5323,
-              "lon": 126.8265,
-              "altitudeM": 206,
-              "velocityMs": 80,
+              "lat": 37.5549,
+              "lon": 126.8041,
+              "altitudeM": 0,
+              "velocityMs": 0,
               "headingDeg": 315,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "observedAt": "2026-07-04T09:00:29.000Z"
             }
           ]
         },
         {
-          "id": "live-seoul-airspace-71c331",
+          "id": "live-seoul-airspace-71c514",
           "source": "opensky-cache",
-          "callsign": "JJA5204",
+          "callsign": "TWB731",
           "originCountry": "Republic of Korea",
-          "icao24": "71c331",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.3929,
-              "lon": 126.4809,
-              "altitudeM": 411,
-              "velocityMs": 79.8,
-              "headingDeg": 325,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71e258",
-          "source": "opensky-cache",
-          "callsign": "HLC258",
-          "originCountry": "Republic of Korea",
-          "icao24": "71e258",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.0427,
-              "lon": 126.7432,
-              "altitudeM": 335,
-              "velocityMs": 45.3,
-              "headingDeg": 357,
-              "observedAt": "2026-07-04T08:20:14.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c515",
-          "source": "opensky-cache",
-          "callsign": "KAL402",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c515",
+          "icao24": "71c514",
           "platformType": "unknown",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 37.4695,
-              "lon": 126.453,
-              "altitudeM": 0,
-              "velocityMs": 32.4,
-              "headingDeg": 335,
-              "observedAt": "2026-07-04T08:25:00.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c303",
-          "source": "opensky-cache",
-          "callsign": "JJA1622",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c303",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4722,
-              "lon": 126.4498,
-              "altitudeM": 0,
-              "velocityMs": 15.4,
-              "headingDeg": 298,
-              "observedAt": "2026-07-04T08:23:10.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71bf01",
-          "source": "opensky-cache",
-          "callsign": "KAL660",
-          "originCountry": "Republic of Korea",
-          "icao24": "71bf01",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4632,
-              "lon": 126.4408,
-              "altitudeM": 0,
-              "velocityMs": 10.3,
-              "headingDeg": 53,
-              "observedAt": "2026-07-04T08:24:56.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-c023c5",
-          "source": "opensky-cache",
-          "callsign": "ACA61",
-          "originCountry": "Canada",
-          "icao24": "c023c5",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4635,
-              "lon": 126.4499,
-              "altitudeM": 0,
-              "velocityMs": 9.3,
-              "headingDeg": 155,
-              "observedAt": "2026-07-04T08:23:30.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71bd32",
-          "source": "opensky-cache",
-          "callsign": "KAL766",
-          "originCountry": "Republic of Korea",
-          "icao24": "71bd32",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4746,
-              "lon": 126.4473,
-              "altitudeM": 0,
-              "velocityMs": 9.3,
-              "headingDeg": 295,
-              "observedAt": "2026-07-04T08:21:02.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c739",
-          "source": "opensky-cache",
-          "callsign": "71c739",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c739",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.455,
-              "lon": 126.4503,
-              "altitudeM": 0,
-              "velocityMs": 7.2,
-              "headingDeg": 53,
-              "observedAt": "2026-07-04T08:23:33.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71bf08",
-          "source": "opensky-cache",
-          "callsign": "71bf08",
-          "originCountry": "Republic of Korea",
-          "icao24": "71bf08",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.5594,
-              "lon": 126.7964,
-              "altitudeM": 0,
-              "velocityMs": 6.9,
-              "headingDeg": 98,
-              "observedAt": "2026-07-04T08:25:03.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71bf92",
-          "source": "opensky-cache",
-          "callsign": "AAR702",
-          "originCountry": "Republic of Korea",
-          "icao24": "71bf92",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4652,
-              "lon": 126.4444,
-              "altitudeM": 0,
-              "velocityMs": 3.9,
-              "headingDeg": 56,
-              "observedAt": "2026-07-04T08:22:02.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c542",
-          "source": "opensky-cache",
-          "callsign": "ESR888",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c542",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.5596,
-              "lon": 126.7993,
-              "altitudeM": 0,
-              "velocityMs": 3.1,
-              "headingDeg": 3,
-              "observedAt": "2026-07-04T08:22:08.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c348",
-          "source": "opensky-cache",
-          "callsign": "KAL804",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c348",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4658,
-              "lon": 126.4424,
-              "altitudeM": 0,
-              "velocityMs": 2.6,
-              "headingDeg": 312,
-              "observedAt": "2026-07-04T08:24:57.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71bf10",
-          "source": "opensky-cache",
-          "callsign": "KAL888",
-          "originCountry": "Republic of Korea",
-          "icao24": "71bf10",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4673,
-              "lon": 126.442,
-              "altitudeM": 0,
-              "velocityMs": 2.3,
-              "headingDeg": 233,
-              "observedAt": "2026-07-04T08:21:11.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c258",
-          "source": "opensky-cache",
-          "callsign": "AAR173",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c258",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4636,
-              "lon": 126.4397,
-              "altitudeM": 0,
-              "velocityMs": 2.1,
-              "headingDeg": 233,
-              "observedAt": "2026-07-04T08:24:04.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-71c081",
-          "source": "opensky-cache",
-          "callsign": "KAL408",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c081",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.4659,
-              "lon": 126.4413,
+              "lat": 37.5586,
+              "lon": 126.8001,
               "altitudeM": 0,
               "velocityMs": 0,
-              "headingDeg": 352,
-              "observedAt": "2026-07-04T08:21:28.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-seoul-airspace-adc93d",
-          "source": "opensky-cache",
-          "callsign": "N988DX",
-          "originCountry": "United States",
-          "icao24": "adc93d",
-          "platformType": "unknown",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.57,
-              "lon": 126.8017,
-              "altitudeM": 0,
-              "velocityMs": 0,
-              "headingDeg": 45,
-              "observedAt": "2026-07-04T08:24:27.000Z"
+              "headingDeg": 315,
+              "observedAt": "2026-07-04T09:04:54.000Z"
             }
           ]
         }
@@ -2461,12 +2241,12 @@
         "id": "live-wx-seoul-airspace",
         "source": "open-meteo-cache",
         "regionId": "seoul-airspace",
-        "observedAt": "2026-07-04T08:15:00Z",
-        "temperatureC": 26.4,
-        "windSpeedKmh": 5.1,
-        "windGustKmh": 40,
-        "visibilityM": 19980,
-        "cloudCoverPct": 94,
+        "observedAt": "2026-07-04T09:00:00Z",
+        "temperatureC": 25.9,
+        "windSpeedKmh": 4.7,
+        "windGustKmh": 34.9,
+        "visibilityM": 22100,
+        "cloudCoverPct": 97,
         "precipitationMm": 0,
         "weatherCode": 3
       },
@@ -2951,7 +2731,7 @@
         "osintEvents": "live"
       },
       "sourceReasons": {
-        "gdelt": "429 backoff until 2026-07-04T08:43:11.148Z",
+        "gdelt": "429 backoff until 2026-07-04T09:15:02.518Z",
         "copernicusStac": "TTL 6시간 내 Copernicus STAC 캐시 재사용",
         "nasaFirms": "TTL 60분 내 NASA FIRMS 캐시 재사용",
         "ais": "WebSocket 연결 성공, 20초 window 수신 0",
@@ -2961,14 +2741,14 @@
         "osintEvents": "OSINT 기사 기반 AOI 검토 포인트입니다. 기사 본문 자동 지오코딩/정확 위치 주장은 하지 않습니다."
       },
       "sourceUpdatedAt": {
-        "opensky": "2026-07-04T08:25:02.480Z",
-        "openMeteo": "2026-07-04T08:25:02.480Z",
-        "googleNews": "2026-07-04T08:25:02.480Z",
+        "opensky": "2026-07-04T09:05:02.610Z",
+        "openMeteo": "2026-07-04T09:05:02.610Z",
+        "googleNews": "2026-07-04T09:05:02.610Z",
         "nasaFirms": "2026-07-04T08:18:11.148Z",
-        "ais": "2026-07-04T08:25:02.480Z",
-        "ourAirports": "2026-07-04T08:25:02.480Z",
-        "airRoutes": "2026-07-04T08:25:02.480Z",
-        "osintEvents": "2026-07-04T08:25:02.480Z",
+        "ais": "2026-07-04T09:05:02.610Z",
+        "ourAirports": "2026-07-04T09:05:02.610Z",
+        "airRoutes": "2026-07-04T09:05:02.610Z",
+        "osintEvents": "2026-07-04T09:05:02.610Z",
         "copernicusStac": "2026-07-04T03:08:16.504Z",
         "icaoFir": "2026-07-04T03:08:16.504Z"
       }
@@ -2976,342 +2756,162 @@
     "south-china-sea": {
       "tracks": [
         {
-          "id": "live-south-china-sea-151e38",
+          "id": "live-south-china-sea-76bd4b",
           "source": "opensky-cache",
-          "callsign": "KAR3546",
-          "originCountry": "Russian Federation",
-          "icao24": "151e38",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 19.2788,
-              "lon": 106.7982,
-              "altitudeM": 10973,
-              "velocityMs": 265.2,
-              "headingDeg": 159,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-88516c",
-          "source": "opensky-cache",
-          "callsign": "THA601",
-          "originCountry": "Thailand",
-          "icao24": "88516c",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 14.5855,
-              "lon": 103.2659,
-              "altitudeM": 10790,
-              "velocityMs": 258.3,
-              "headingDeg": 254,
-              "observedAt": "2026-07-04T08:25:08.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-76cc6b",
-          "source": "opensky-cache",
-          "callsign": "SIA401",
+          "callsign": "TGW610",
           "originCountry": "Singapore",
-          "icao24": "76cc6b",
+          "icao24": "76bd4b",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 3.3226,
-              "lon": 103.5925,
-              "altitudeM": 10295,
-              "velocityMs": 258.1,
-              "headingDeg": 143,
-              "observedAt": "2026-07-04T08:25:07.000Z"
+              "lat": 3.557,
+              "lon": 103.4219,
+              "altitudeM": 9418,
+              "velocityMs": 269.5,
+              "headingDeg": 338,
+              "observedAt": "2026-07-04T09:05:06.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-769101",
+          "id": "live-south-china-sea-4bb1a5",
           "source": "opensky-cache",
-          "callsign": "SIA7403",
-          "originCountry": "Singapore",
-          "icao24": "769101",
+          "callsign": "THY310",
+          "originCountry": "Turkey",
+          "icao24": "4bb1a5",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 12.4306,
-              "lon": 120.3118,
-              "altitudeM": 10973,
-              "velocityMs": 252.4,
-              "headingDeg": 221,
-              "observedAt": "2026-07-04T08:25:08.000Z"
+              "lat": 3.6582,
+              "lon": 104.0628,
+              "altitudeM": 11278,
+              "velocityMs": 269,
+              "headingDeg": 189,
+              "observedAt": "2026-07-04T09:05:07.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-8881b0",
+          "id": "live-south-china-sea-4bb103",
           "source": "opensky-cache",
-          "callsign": "VJC853",
-          "originCountry": "Viet Nam",
-          "icao24": "8881b0",
+          "callsign": "THY056",
+          "originCountry": "Turkey",
+          "icao24": "4bb103",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 19.1607,
-              "lon": 117.9277,
-              "altitudeM": 9754,
-              "velocityMs": 252.1,
-              "headingDeg": 225,
-              "observedAt": "2026-07-04T08:23:20.000Z"
+              "lat": 1.569,
+              "lon": 104.08,
+              "altitudeM": 11278,
+              "velocityMs": 267.6,
+              "headingDeg": 157,
+              "observedAt": "2026-07-04T09:05:07.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-8990e5",
+          "id": "live-south-china-sea-a2cb12",
           "source": "opensky-cache",
-          "callsign": "EVA392",
-          "originCountry": "Taiwan",
-          "icao24": "8990e5",
+          "callsign": "UAL29",
+          "originCountry": "United States",
+          "icao24": "a2cb12",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 19.338,
-              "lon": 119.6874,
-              "altitudeM": 10668,
-              "velocityMs": 250.7,
-              "headingDeg": 31,
-              "observedAt": "2026-07-04T08:23:30.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-78921b",
-          "source": "opensky-cache",
-          "callsign": "CPA411",
-          "originCountry": "China",
-          "icao24": "78921b",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 24.9891,
-              "lon": 121.2944,
-              "altitudeM": 10965,
-              "velocityMs": 250.6,
-              "headingDeg": 228,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-780e05",
-          "source": "opensky-cache",
-          "callsign": "CSN3097",
-          "originCountry": "China",
-          "icao24": "780e05",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 21.5627,
-              "lon": 115.5086,
-              "altitudeM": 10058,
-              "velocityMs": 250.1,
-              "headingDeg": 77,
-              "observedAt": "2026-07-04T08:22:32.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-8990ec",
-          "source": "opensky-cache",
-          "callsign": "CAL082",
-          "originCountry": "Taiwan",
-          "icao24": "8990ec",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 21.7214,
-              "lon": 115.0829,
-              "altitudeM": 12497,
-              "velocityMs": 249.4,
-              "headingDeg": 83,
-              "observedAt": "2026-07-04T08:22:50.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-702066",
-          "source": "opensky-cache",
-          "callsign": "BBC585",
-          "originCountry": "Bangladesh",
-          "icao24": "702066",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 3.3537,
-              "lon": 103.3023,
-              "altitudeM": 9205,
-              "velocityMs": 249.1,
-              "headingDeg": 342,
-              "observedAt": "2026-07-04T08:25:08.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-7583ed",
-          "source": "opensky-cache",
-          "callsign": "PAL736",
-          "originCountry": "Philippines",
-          "icao24": "7583ed",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 14.291,
-              "lon": 118.0738,
-              "altitudeM": 10363,
-              "velocityMs": 248.8,
-              "headingDeg": 265,
-              "observedAt": "2026-07-04T08:23:50.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-896114",
-          "source": "opensky-cache",
-          "callsign": "UAE348",
-          "originCountry": "United Arab Emirates",
-          "icao24": "896114",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 3.7749,
-              "lon": 104.0686,
-              "altitudeM": 8649,
-              "velocityMs": 248.6,
-              "headingDeg": 2,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-8a0532",
-          "source": "opensky-cache",
-          "callsign": "GIA875",
-          "originCountry": "Indonesia",
-          "icao24": "8a0532",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 6.1558,
-              "lon": 115.9077,
+              "lat": 4.4538,
+              "lon": 113.5992,
               "altitudeM": 12192,
-              "velocityMs": 248.6,
-              "headingDeg": 215,
-              "observedAt": "2026-07-04T08:25:07.000Z"
+              "velocityMs": 266.6,
+              "headingDeg": 245,
+              "observedAt": "2026-07-04T09:05:07.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-885b48",
+          "id": "live-south-china-sea-a83f8c",
           "source": "opensky-cache",
-          "callsign": "TVJ567",
-          "originCountry": "Thailand",
-          "icao24": "885b48",
+          "callsign": "UPS59D",
+          "originCountry": "United States",
+          "icao24": "a83f8c",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 23.6547,
+              "lon": 120.2249,
+              "altitudeM": 9449,
+              "velocityMs": 264.9,
+              "headingDeg": 44,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-769102",
+          "source": "opensky-cache",
+          "callsign": "SIA7446",
+          "originCountry": "Singapore",
+          "icao24": "769102",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
               "lat": 21.1425,
-              "lon": 117.1216,
-              "altitudeM": 11582,
-              "velocityMs": 247.7,
-              "headingDeg": 247,
-              "observedAt": "2026-07-04T08:22:35.000Z"
+              "lon": 120.7231,
+              "altitudeM": 9449,
+              "velocityMs": 264.2,
+              "headingDeg": 346,
+              "observedAt": "2026-07-04T09:05:07.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-7801b6",
+          "id": "live-south-china-sea-76bd49",
           "source": "opensky-cache",
-          "callsign": "CPA418",
-          "originCountry": "China",
-          "icao24": "7801b6",
+          "callsign": "TGW867",
+          "originCountry": "Singapore",
+          "icao24": "76bd49",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 25.2201,
-              "lon": 121.5765,
-              "altitudeM": 11887,
-              "velocityMs": 247.2,
-              "headingDeg": 49,
-              "observedAt": "2026-07-04T08:25:07.000Z"
+              "lat": 20.9078,
+              "lon": 119.7806,
+              "altitudeM": 12192,
+              "velocityMs": 262.6,
+              "headingDeg": 225,
+              "observedAt": "2026-07-04T09:05:07.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-71c308",
+          "id": "live-south-china-sea-8965b9",
           "source": "opensky-cache",
-          "callsign": "AAR761",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c308",
+          "callsign": "UAE9873",
+          "originCountry": "United Arab Emirates",
+          "icao24": "8965b9",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 25.081,
-              "lon": 122.0567,
-              "altitudeM": 11582,
-              "velocityMs": 247.1,
-              "headingDeg": 182,
-              "observedAt": "2026-07-04T08:25:08.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-71c399",
-          "source": "opensky-cache",
-          "callsign": "AAR744",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c399",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 25.3756,
-              "lon": 121.7732,
-              "altitudeM": 9441,
-              "velocityMs": 246.9,
-              "headingDeg": 49,
-              "observedAt": "2026-07-04T08:25:07.000Z"
+              "lat": 22.8625,
+              "lon": 107.8336,
+              "altitudeM": 9784,
+              "velocityMs": 258.6,
+              "headingDeg": 300,
+              "observedAt": "2026-07-04T08:59:53.000Z"
             }
           ]
         },
@@ -3326,52 +2926,52 @@
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 21.6761,
-              "lon": 121.0505,
-              "altitudeM": 11582,
-              "velocityMs": 246,
-              "headingDeg": 202,
-              "observedAt": "2026-07-04T08:25:06.000Z"
+              "lat": 16.4054,
+              "lon": 121.0957,
+              "altitudeM": 10074,
+              "velocityMs": 257.7,
+              "headingDeg": 180,
+              "observedAt": "2026-07-04T09:05:08.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-c8236e",
+          "id": "live-south-china-sea-7810a3",
           "source": "opensky-cache",
-          "callsign": "ANZ81",
-          "originCountry": "New Zealand",
-          "icao24": "c8236e",
+          "callsign": "CXA802",
+          "originCountry": "China",
+          "icao24": "7810a3",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 17.291,
-              "lon": 119.5339,
+              "lat": 12.3237,
+              "lon": 121.0503,
               "altitudeM": 11582,
-              "velocityMs": 245.2,
-              "headingDeg": 322,
-              "observedAt": "2026-07-04T08:22:20.000Z"
+              "velocityMs": 257.2,
+              "headingDeg": 351,
+              "observedAt": "2026-07-04T09:05:07.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-7504fe",
+          "id": "live-south-china-sea-7817fb",
           "source": "opensky-cache",
-          "callsign": "AXM583",
-          "originCountry": "Malaysia",
-          "icao24": "7504fe",
+          "callsign": "DKH1670",
+          "originCountry": "China",
+          "icao24": "7817fb",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 3.3484,
-              "lon": 104.5247,
-              "altitudeM": 10363,
-              "velocityMs": 245.1,
-              "headingDeg": 259,
-              "observedAt": "2026-07-04T08:25:08.000Z"
+              "lat": 14.99,
+              "lon": 121.0544,
+              "altitudeM": 11582,
+              "velocityMs": 256,
+              "headingDeg": 326,
+              "observedAt": "2026-07-04T09:05:06.000Z"
             }
           ]
         },
@@ -3386,252 +2986,292 @@
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 21.7433,
-              "lon": 115.225,
-              "altitudeM": 8710,
-              "velocityMs": 244.9,
-              "headingDeg": 90,
-              "observedAt": "2026-07-04T08:21:23.000Z"
+              "lat": 24.2022,
+              "lon": 120.7987,
+              "altitudeM": 10668,
+              "velocityMs": 255.8,
+              "headingDeg": 44,
+              "observedAt": "2026-07-04T09:05:08.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-781cd7",
+          "id": "live-south-china-sea-76cc6c",
           "source": "opensky-cache",
-          "callsign": "QDA917",
-          "originCountry": "China",
-          "icao24": "781cd7",
+          "callsign": "SIA634",
+          "originCountry": "Singapore",
+          "icao24": "76cc6c",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 22.4232,
-              "lon": 106.7973,
-              "altitudeM": 10363,
-              "velocityMs": 244.5,
-              "headingDeg": 205,
-              "observedAt": "2026-07-04T08:25:08.000Z"
+              "lat": 15.1854,
+              "lon": 120.7267,
+              "altitudeM": 11887,
+              "velocityMs": 255.4,
+              "headingDeg": 44,
+              "observedAt": "2026-07-04T09:05:08.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-71c560",
+          "id": "live-south-china-sea-71c308",
           "source": "opensky-cache",
-          "callsign": "TWB155",
+          "callsign": "AAR761",
           "originCountry": "Republic of Korea",
-          "icao24": "71c560",
+          "icao24": "71c308",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.7528,
-              "lon": 122.044,
-              "altitudeM": 10973,
-              "velocityMs": 244.5,
-              "headingDeg": 182,
-              "observedAt": "2026-07-04T08:25:08.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-8881c5",
-          "source": "opensky-cache",
-          "callsign": "VJC86",
-          "originCountry": "Viet Nam",
-          "icao24": "8881c5",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 6.0007,
-              "lon": 113.3292,
+              "lat": 19.8272,
+              "lon": 120.6619,
               "altitudeM": 11582,
-              "velocityMs": 244.5,
-              "headingDeg": 298,
-              "observedAt": "2026-07-04T08:25:03.000Z"
+              "velocityMs": 255.4,
+              "headingDeg": 184,
+              "observedAt": "2026-07-04T09:05:06.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-71bf40",
+          "id": "live-south-china-sea-895057",
           "source": "opensky-cache",
-          "callsign": "AAR732",
-          "originCountry": "Republic of Korea",
-          "icao24": "71bf40",
+          "callsign": "895057",
+          "originCountry": "Brunei Darussalam",
+          "icao24": "895057",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.5798,
-              "lon": 121.0319,
+              "lat": 3.9098,
+              "lon": 115.9482,
+              "altitudeM": 8633,
+              "velocityMs": 255.2,
+              "headingDeg": 317,
+              "observedAt": "2026-07-04T09:03:32.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-040123",
+          "source": "opensky-cache",
+          "callsign": "ETH628",
+          "originCountry": "Ethiopia",
+          "icao24": "040123",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 0.5189,
+              "lon": 104.4245,
+              "altitudeM": 12489,
+              "velocityMs": 254.9,
+              "headingDeg": 151,
+              "observedAt": "2026-07-04T09:04:54.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-394a18",
+          "source": "opensky-cache",
+          "callsign": "AFR256",
+          "originCountry": "France",
+          "icao24": "394a18",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 5.1264,
+              "lon": 102.5658,
               "altitudeM": 11278,
-              "velocityMs": 244.5,
-              "headingDeg": 37,
-              "observedAt": "2026-07-04T08:25:08.000Z"
+              "velocityMs": 254.5,
+              "headingDeg": 161,
+              "observedAt": "2026-07-04T08:59:57.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-7c5322",
+          "id": "live-south-china-sea-750260",
           "source": "opensky-cache",
-          "callsign": "QFA127",
-          "originCountry": "Australia",
-          "icao24": "7c5322",
+          "callsign": "MAS367",
+          "originCountry": "Malaysia",
+          "icao24": "750260",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 15.0512,
-              "lon": 117.9507,
-              "altitudeM": 10363,
-              "velocityMs": 244.1,
-              "headingDeg": 333,
-              "observedAt": "2026-07-04T08:20:19.000Z"
+              "lat": 19.0132,
+              "lon": 117.774,
+              "altitudeM": 10973,
+              "velocityMs": 253.9,
+              "headingDeg": 225,
+              "observedAt": "2026-07-04T09:01:34.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-7802fd",
+          "id": "live-south-china-sea-8a08e0",
           "source": "opensky-cache",
-          "callsign": "CSS305",
+          "callsign": "SJV866",
+          "originCountry": "Indonesia",
+          "icao24": "8a08e0",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": -0.9972,
+              "lon": 102.6522,
+              "altitudeM": 8527,
+              "velocityMs": 253.6,
+              "headingDeg": 322,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-76cc76",
+          "source": "opensky-cache",
+          "callsign": "SIA712",
+          "originCountry": "Singapore",
+          "icao24": "76cc76",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 4.0891,
+              "lon": 103.1818,
+              "altitudeM": 9594,
+              "velocityMs": 253.5,
+              "headingDeg": 357,
+              "observedAt": "2026-07-04T09:02:57.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-789275",
+          "source": "opensky-cache",
+          "callsign": "CPA527",
           "originCountry": "China",
-          "icao24": "7802fd",
+          "icao24": "789275",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 3.9841,
-              "lon": 104.4284,
-              "altitudeM": 9754,
-              "velocityMs": 243.4,
-              "headingDeg": 141,
-              "observedAt": "2026-07-04T08:24:12.000Z"
+              "lat": 24.1943,
+              "lon": 120.3422,
+              "altitudeM": 12192,
+              "velocityMs": 252.3,
+              "headingDeg": 227,
+              "observedAt": "2026-07-04T09:05:07.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-8851e5",
+          "id": "live-south-china-sea-750546",
           "source": "opensky-cache",
-          "callsign": "THA407",
-          "originCountry": "Thailand",
-          "icao24": "8851e5",
+          "callsign": "AXM8013",
+          "originCountry": "Malaysia",
+          "icao24": "750546",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 3.6674,
-              "lon": 103.3071,
-              "altitudeM": 10676,
-              "velocityMs": 243.1,
-              "headingDeg": 156,
-              "observedAt": "2026-07-04T08:25:08.000Z"
+              "lat": 2.8579,
+              "lon": 103.8664,
+              "altitudeM": 9746,
+              "velocityMs": 251.9,
+              "headingDeg": 267,
+              "observedAt": "2026-07-04T09:05:08.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-7801c1",
+          "id": "live-south-china-sea-ac0d21",
           "source": "opensky-cache",
-          "callsign": "HKE844",
+          "callsign": "FDX5432",
+          "originCountry": "United States",
+          "icao24": "ac0d21",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 23.4085,
+              "lon": 119.315,
+              "altitudeM": 10973,
+              "velocityMs": 251.1,
+              "headingDeg": 238,
+              "observedAt": "2026-07-04T09:02:27.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-70801c",
+          "source": "opensky-cache",
+          "callsign": "70801c",
+          "originCountry": "Lao People's Democratic Republic",
+          "icao24": "70801c",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 22.8059,
+              "lon": 107.8179,
+              "altitudeM": 11003,
+              "velocityMs": 250.7,
+              "headingDeg": 254,
+              "observedAt": "2026-07-04T09:05:06.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-8015c1",
+          "source": "opensky-cache",
+          "callsign": "AIC2148",
+          "originCountry": "India",
+          "icao24": "8015c1",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 1.8093,
+              "lon": 103.5019,
+              "altitudeM": 9746,
+              "velocityMs": 250.2,
+              "headingDeg": 291,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-7801a3",
+          "source": "opensky-cache",
+          "callsign": "CPA654",
           "originCountry": "China",
-          "icao24": "7801c1",
+          "icao24": "7801a3",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 25.1286,
-              "lon": 122.0609,
-              "altitudeM": 10676,
-              "velocityMs": 243,
-              "headingDeg": 92,
-              "observedAt": "2026-07-04T08:25:08.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-8990dc",
-          "source": "opensky-cache",
-          "callsign": "EVA216",
-          "originCountry": "Taiwan",
-          "icao24": "8990dc",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 3.7967,
-              "lon": 104.4708,
-              "altitudeM": 9449,
-              "velocityMs": 243,
-              "headingDeg": 42,
-              "observedAt": "2026-07-04T08:23:52.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-8990aa",
-          "source": "opensky-cache",
-          "callsign": "8990aa",
-          "originCountry": "Taiwan",
-          "icao24": "8990aa",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 14.6787,
-              "lon": 103.6551,
-              "altitudeM": 10363,
-              "velocityMs": 242.7,
-              "headingDeg": 261,
-              "observedAt": "2026-07-04T08:25:05.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-88516b",
-          "source": "opensky-cache",
-          "callsign": "THA634",
-          "originCountry": "Thailand",
-          "icao24": "88516b",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 21.0735,
-              "lon": 117.2953,
-              "altitudeM": 11278,
-              "velocityMs": 242.5,
-              "headingDeg": 64,
-              "observedAt": "2026-07-04T08:24:24.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-7809fb",
-          "source": "opensky-cache",
-          "callsign": "CSN5537",
-          "originCountry": "China",
-          "icao24": "7809fb",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 23.3582,
-              "lon": 113.6335,
-              "altitudeM": 6736,
-              "velocityMs": 242.1,
-              "headingDeg": 311,
-              "observedAt": "2026-07-04T08:18:02.000Z"
+              "lat": 14.7341,
+              "lon": 103.051,
+              "altitudeM": 9434,
+              "velocityMs": 250.2,
+              "headingDeg": 69,
+              "observedAt": "2026-07-04T09:05:07.000Z"
             }
           ]
         },
@@ -3646,332 +3286,472 @@
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 16.5874,
-              "lon": 120.0052,
-              "altitudeM": 13106,
-              "velocityMs": 242.1,
-              "headingDeg": 325,
-              "observedAt": "2026-07-04T08:25:08.000Z"
+              "lat": 20.275,
+              "lon": 116.1132,
+              "altitudeM": 11902,
+              "velocityMs": 249.9,
+              "headingDeg": 297,
+              "observedAt": "2026-07-04T09:05:04.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-8a02cb",
+          "id": "live-south-china-sea-7801b5",
           "source": "opensky-cache",
-          "callsign": "AWQ323",
-          "originCountry": "Indonesia",
-          "icao24": "8a02cb",
+          "callsign": "CPA925",
+          "originCountry": "China",
+          "icao24": "7801b5",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": -0.1954,
-              "lon": 104.7705,
-              "altitudeM": 10676,
-              "velocityMs": 241.4,
-              "headingDeg": 138,
-              "observedAt": "2026-07-04T08:25:06.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-862248",
-          "source": "opensky-cache",
-          "callsign": "ANA860",
-          "originCountry": "Japan",
-          "icao24": "862248",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 24.8661,
-              "lon": 121.6491,
+              "lat": 17.0838,
+              "lon": 119.4836,
               "altitudeM": 11278,
-              "velocityMs": 241.4,
-              "headingDeg": 52,
-              "observedAt": "2026-07-04T08:25:08.000Z"
+              "velocityMs": 249.8,
+              "headingDeg": 151,
+              "observedAt": "2026-07-04T09:05:06.000Z"
             }
           ]
         },
         {
-          "id": "live-south-china-sea-78929f",
+          "id": "live-south-china-sea-71c560",
           "source": "opensky-cache",
-          "callsign": "CRK629",
-          "originCountry": "China",
-          "icao24": "78929f",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 24.8799,
-              "lon": 121.1384,
-              "altitudeM": 10363,
-              "velocityMs": 241.2,
-              "headingDeg": 230,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-7805e0",
-          "source": "opensky-cache",
-          "callsign": "CXA8695",
-          "originCountry": "China",
-          "icao24": "7805e0",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 19.869,
-              "lon": 116.8233,
-              "altitudeM": 10058,
-              "velocityMs": 241.1,
-              "headingDeg": 132,
-              "observedAt": "2026-07-04T08:24:43.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-71c719",
-          "source": "opensky-cache",
-          "callsign": "JJA2212",
+          "callsign": "TWB155",
           "originCountry": "Republic of Korea",
-          "icao24": "71c719",
+          "icao24": "71c560",
           "platformType": "commercial",
           "baselineCorridorKm": 25,
           "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
           "points": [
             {
-              "lat": 24.3717,
-              "lon": 120.8625,
+              "lat": 19.9703,
+              "lon": 120.6737,
+              "altitudeM": 10363,
+              "velocityMs": 249.7,
+              "headingDeg": 184,
+              "observedAt": "2026-07-04T09:02:26.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-86ced2",
+          "source": "opensky-cache",
+          "callsign": "ANA886",
+          "originCountry": "Japan",
+          "icao24": "86ced2",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 13.7459,
+              "lon": 118.8529,
+              "altitudeM": 10660,
+              "velocityMs": 248.8,
+              "headingDeg": 50,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-7c4a45",
+          "source": "opensky-cache",
+          "callsign": "JST72",
+          "originCountry": "Australia",
+          "icao24": "7c4a45",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": -3.1539,
+              "lon": 103.5985,
+              "altitudeM": 10074,
+              "velocityMs": 247.3,
+              "headingDeg": 161,
+              "observedAt": "2026-07-04T09:02:25.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-7584be",
+          "source": "opensky-cache",
+          "callsign": "RYL932",
+          "originCountry": "Philippines",
+          "icao24": "7584be",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 13.8831,
+              "lon": 120.5236,
+              "altitudeM": 10371,
+              "velocityMs": 246.5,
+              "headingDeg": 298,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-750555",
+          "source": "opensky-cache",
+          "callsign": "MAS723",
+          "originCountry": "Malaysia",
+          "icao24": "750555",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": -0.9243,
+              "lon": 105.1698,
+              "altitudeM": 11278,
+              "velocityMs": 245.2,
+              "headingDeg": 156,
+              "observedAt": "2026-07-04T09:05:08.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-780abb",
+          "source": "opensky-cache",
+          "callsign": "CPA500",
+          "originCountry": "China",
+          "icao24": "780abb",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 23.67,
+              "lon": 120.241,
+              "altitudeM": 12497,
+              "velocityMs": 244.9,
+              "headingDeg": 44,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-8991e5",
+          "source": "opensky-cache",
+          "callsign": "SJX742",
+          "originCountry": "Taiwan",
+          "icao24": "8991e5",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 20.7845,
+              "lon": 116.6652,
+              "altitudeM": 11887,
+              "velocityMs": 244.8,
+              "headingDeg": 64,
+              "observedAt": "2026-07-04T09:02:19.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-86da1e",
+          "source": "opensky-cache",
+          "callsign": "JAL723",
+          "originCountry": "Japan",
+          "icao24": "86da1e",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 2.9702,
+              "lon": 103.0848,
+              "altitudeM": 8969,
+              "velocityMs": 244.7,
+              "headingDeg": 280,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-aa8b77",
+          "source": "opensky-cache",
+          "callsign": "N779LG",
+          "originCountry": "United States",
+          "icao24": "aa8b77",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 7.6273,
+              "lon": 114.0696,
+              "altitudeM": 9754,
+              "velocityMs": 244.1,
+              "headingDeg": 233,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-8a09c3",
+          "source": "opensky-cache",
+          "callsign": "SJV855",
+          "originCountry": "Indonesia",
+          "icao24": "8a09c3",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": -1.8677,
+              "lon": 104.7528,
+              "altitudeM": 10660,
+              "velocityMs": 243.9,
+              "headingDeg": 159,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-781229",
+          "source": "opensky-cache",
+          "callsign": "CES9633",
+          "originCountry": "China",
+          "icao24": "781229",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 19.4016,
+              "lon": 106.6506,
+              "altitudeM": 10973,
+              "velocityMs": 243.6,
+              "headingDeg": 167,
+              "observedAt": "2026-07-04T09:05:06.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-75021f",
+          "source": "opensky-cache",
+          "callsign": "MAS2607",
+          "originCountry": "Malaysia",
+          "icao24": "75021f",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 5.4563,
+              "lon": 113.6658,
+              "altitudeM": 11133,
+              "velocityMs": 243.2,
+              "headingDeg": 252,
+              "observedAt": "2026-07-04T09:05:08.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-789233",
+          "source": "opensky-cache",
+          "callsign": "CPA150",
+          "originCountry": "China",
+          "icao24": "789233",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 13.0951,
+              "lon": 122.0343,
+              "altitudeM": 11346,
+              "velocityMs": 243.2,
+              "headingDeg": 325,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-75021d",
+          "source": "opensky-cache",
+          "callsign": "75021d",
+          "originCountry": "Malaysia",
+          "icao24": "75021d",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 5.6965,
+              "lon": 111.798,
+              "altitudeM": 10973,
+              "velocityMs": 242.7,
+              "headingDeg": 237,
+              "observedAt": "2026-07-04T09:00:34.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-899046",
+          "source": "opensky-cache",
+          "callsign": "899046",
+          "originCountry": "Taiwan",
+          "icao24": "899046",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 14.9839,
+              "lon": 103.7036,
+              "altitudeM": 11582,
+              "velocityMs": 241.8,
+              "headingDeg": 244,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-75021e",
+          "source": "opensky-cache",
+          "callsign": "MAS762",
+          "originCountry": "Malaysia",
+          "icao24": "75021e",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 3.6671,
+              "lon": 102.4748,
+              "altitudeM": 8123,
+              "velocityMs": 241.6,
+              "headingDeg": 17,
+              "observedAt": "2026-07-04T09:01:00.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-78025a",
+          "source": "opensky-cache",
+          "callsign": "78025a",
+          "originCountry": "China",
+          "icao24": "78025a",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 24.7827,
+              "lon": 118.4213,
+              "altitudeM": 9479,
+              "velocityMs": 241.6,
+              "headingDeg": 46,
+              "observedAt": "2026-07-04T09:03:28.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-7819dd",
+          "source": "opensky-cache",
+          "callsign": "CES7705",
+          "originCountry": "China",
+          "icao24": "7819dd",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 3.4428,
+              "lon": 104.1788,
+              "altitudeM": 10470,
+              "velocityMs": 241.4,
+              "headingDeg": 171,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-76b442",
+          "source": "opensky-cache",
+          "callsign": "SIA901",
+          "originCountry": "Singapore",
+          "icao24": "76b442",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 5.8264,
+              "lon": 117.3241,
+              "altitudeM": 11590,
+              "velocityMs": 241,
+              "headingDeg": 245,
+              "observedAt": "2026-07-04T09:05:06.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-7504f7",
+          "source": "opensky-cache",
+          "callsign": "RMY1862",
+          "originCountry": "Malaysia",
+          "icao24": "7504f7",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 3.1225,
+              "lon": 102.9312,
+              "altitudeM": 7346,
+              "velocityMs": 241,
+              "headingDeg": 62,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-781986",
+          "source": "opensky-cache",
+          "callsign": "CSH886",
+          "originCountry": "China",
+          "icao24": "781986",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": 3.8811,
+              "lon": 104.3135,
+              "altitudeM": 9075,
+              "velocityMs": 240.8,
+              "headingDeg": 80,
+              "observedAt": "2026-07-04T09:05:07.000Z"
+            }
+          ]
+        },
+        {
+          "id": "live-south-china-sea-8a094e",
+          "source": "opensky-cache",
+          "callsign": "SJV363",
+          "originCountry": "Indonesia",
+          "icao24": "8a094e",
+          "platformType": "commercial",
+          "baselineCorridorKm": 25,
+          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
+          "points": [
+            {
+              "lat": -2.579,
+              "lon": 104.6268,
               "altitudeM": 10668,
               "velocityMs": 240.2,
-              "headingDeg": 37,
-              "observedAt": "2026-07-04T08:25:08.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-895052",
-          "source": "opensky-cache",
-          "callsign": "RBA684",
-          "originCountry": "Brunei Darussalam",
-          "icao24": "895052",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 6.8203,
-              "lon": 116.6148,
-              "altitudeM": 10973,
-              "velocityMs": 239.9,
-              "headingDeg": 223,
-              "observedAt": "2026-07-04T08:25:08.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-7501f9",
-          "source": "opensky-cache",
-          "callsign": "XAX533",
-          "originCountry": "Malaysia",
-          "icao24": "7501f9",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 3.0711,
-              "lon": 103.3236,
-              "altitudeM": 10401,
-              "velocityMs": 239.9,
-              "headingDeg": 248,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-7808e7",
-          "source": "opensky-cache",
-          "callsign": "CSH925V",
-          "originCountry": "China",
-          "icao24": "7808e7",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 22.484,
-              "lon": 114.0917,
-              "altitudeM": 11308,
-              "velocityMs": 239.7,
-              "headingDeg": 83,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-76b44b",
-          "source": "opensky-cache",
-          "callsign": "SIA138",
-          "originCountry": "Singapore",
-          "icao24": "76b44b",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 2.1565,
-              "lon": 103.0059,
-              "altitudeM": 8542,
-              "velocityMs": 239.3,
-              "headingDeg": 297,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-7822a2",
-          "source": "opensky-cache",
-          "callsign": "CQH6523",
-          "originCountry": "China",
-          "icao24": "7822a2",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 24.374,
-              "lon": 118.9177,
-              "altitudeM": 10394,
-              "velocityMs": 238.5,
-              "headingDeg": 229,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-7812dc",
-          "source": "opensky-cache",
-          "callsign": "CCA821",
-          "originCountry": "China",
-          "icao24": "7812dc",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 21.2774,
-              "lon": 105.4364,
-              "altitudeM": 10973,
-              "velocityMs": 238,
-              "headingDeg": 237,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-782271",
-          "source": "opensky-cache",
-          "callsign": "CES6747",
-          "originCountry": "China",
-          "icao24": "782271",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 22.4253,
-              "lon": 112.9558,
-              "altitudeM": 11011,
-              "velocityMs": 237.8,
-              "headingDeg": 176,
-              "observedAt": "2026-07-04T08:24:56.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-8a0914",
-          "source": "opensky-cache",
-          "callsign": "PAS323",
-          "originCountry": "Indonesia",
-          "icao24": "8a0914",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": -3.0474,
-              "lon": 105.1108,
-              "altitudeM": 11278,
-              "velocityMs": 237.3,
-              "headingDeg": 141,
-              "observedAt": "2026-07-04T08:20:43.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-89904e",
-          "source": "opensky-cache",
-          "callsign": "EVA385",
-          "originCountry": "Taiwan",
-          "icao24": "89904e",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 21.0785,
-              "lon": 114.058,
-              "altitudeM": 10394,
-              "velocityMs": 237.3,
-              "headingDeg": 272,
-              "observedAt": "2026-07-04T08:25:07.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-4bb148",
-          "source": "opensky-cache",
-          "callsign": "THY24",
-          "originCountry": "Turkey",
-          "icao24": "4bb148",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 21.9616,
-              "lon": 117.3204,
-              "altitudeM": 11278,
-              "velocityMs": 236.7,
-              "headingDeg": 80,
-              "observedAt": "2026-07-04T08:22:02.000Z"
-            }
-          ]
-        },
-        {
-          "id": "live-south-china-sea-780a7a",
-          "source": "opensky-cache",
-          "callsign": "CRK612",
-          "originCountry": "China",
-          "icao24": "780a7a",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 25.2113,
-              "lon": 122.0941,
-              "altitudeM": 10058,
-              "velocityMs": 236.5,
-              "headingDeg": 50,
-              "observedAt": "2026-07-04T08:25:08.000Z"
+              "headingDeg": 137,
+              "observedAt": "2026-07-04T09:05:07.000Z"
             }
           ]
         }
@@ -3981,14 +3761,14 @@
         "id": "live-wx-south-china-sea",
         "source": "open-meteo-cache",
         "regionId": "south-china-sea",
-        "observedAt": "2026-07-04T08:15:00Z",
-        "temperatureC": 29.2,
-        "windSpeedKmh": 28.6,
-        "windGustKmh": 37.1,
-        "visibilityM": 9460,
-        "cloudCoverPct": 71,
+        "observedAt": "2026-07-04T09:00:00Z",
+        "temperatureC": 29.5,
+        "windSpeedKmh": 26.4,
+        "windGustKmh": 33.8,
+        "visibilityM": 18360,
+        "cloudCoverPct": 91,
         "precipitationMm": 0,
-        "weatherCode": 2
+        "weatherCode": 3
       },
       "osint": [
         {
@@ -4816,7 +4596,7 @@
         "osintEvents": "live"
       },
       "sourceReasons": {
-        "gdelt": "429 backoff until 2026-07-04T08:43:11.148Z",
+        "gdelt": "429 backoff until 2026-07-04T09:15:02.518Z",
         "copernicusStac": "TTL 6시간 내 Copernicus STAC 캐시 재사용",
         "nasaFirms": "TTL 60분 내 NASA FIRMS 캐시 재사용",
         "ais": "WebSocket 연결 성공, 20초 window 수신 0",
@@ -4826,52 +4606,31 @@
         "osintEvents": "OSINT 기사 기반 AOI 검토 포인트입니다. 기사 본문 자동 지오코딩/정확 위치 주장은 하지 않습니다."
       },
       "sourceUpdatedAt": {
-        "opensky": "2026-07-04T08:25:02.480Z",
-        "openMeteo": "2026-07-04T08:25:02.480Z",
-        "googleNews": "2026-07-04T08:25:02.480Z",
-        "ais": "2026-07-04T08:25:02.480Z",
-        "ourAirports": "2026-07-04T08:25:02.480Z",
-        "airRoutes": "2026-07-04T08:25:02.480Z",
-        "osintEvents": "2026-07-04T08:25:02.480Z",
+        "opensky": "2026-07-04T09:05:02.610Z",
+        "openMeteo": "2026-07-04T09:05:02.610Z",
+        "googleNews": "2026-07-04T09:05:02.610Z",
+        "ais": "2026-07-04T09:05:02.610Z",
+        "ourAirports": "2026-07-04T09:05:02.610Z",
+        "airRoutes": "2026-07-04T09:05:02.610Z",
+        "osintEvents": "2026-07-04T09:05:02.610Z",
         "copernicusStac": "2026-07-04T03:08:16.504Z",
         "nasaFirms": "2026-07-04T08:18:11.148Z",
         "icaoFir": "2026-07-04T03:08:16.504Z"
       }
     },
     "west-sea-nll": {
-      "tracks": [
-        {
-          "id": "live-west-sea-nll-71c272",
-          "source": "opensky-cache",
-          "callsign": "KAL1405",
-          "originCountry": "Republic of Korea",
-          "icao24": "71c272",
-          "platformType": "commercial",
-          "baselineCorridorKm": 25,
-          "notes": "Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.",
-          "points": [
-            {
-              "lat": 37.6511,
-              "lon": 126.3817,
-              "altitudeM": 1745,
-              "velocityMs": 136.5,
-              "headingDeg": 65,
-              "observedAt": "2026-07-04T08:25:08.000Z"
-            }
-          ]
-        }
-      ],
+      "tracks": [],
       "ships": [],
       "weather": {
         "id": "live-wx-west-sea-nll",
         "source": "open-meteo-cache",
         "regionId": "west-sea-nll",
-        "observedAt": "2026-07-04T08:15:00Z",
-        "temperatureC": 24.3,
-        "windSpeedKmh": 14.5,
-        "windGustKmh": 33.1,
-        "visibilityM": 13340,
-        "cloudCoverPct": 26,
+        "observedAt": "2026-07-04T09:00:00Z",
+        "temperatureC": 23.8,
+        "windSpeedKmh": 16.7,
+        "windGustKmh": 29.2,
+        "visibilityM": 12660,
+        "cloudCoverPct": 41,
         "precipitationMm": 0,
         "weatherCode": 1
       },
@@ -5356,7 +5115,7 @@
         "osintEvents": "live"
       },
       "sourceReasons": {
-        "gdelt": "429 backoff until 2026-07-04T08:43:11.148Z",
+        "gdelt": "429 backoff until 2026-07-04T09:15:02.518Z",
         "copernicusStac": "TTL 6시간 내 Copernicus STAC 캐시 재사용",
         "nasaFirms": "TTL 60분 내 NASA FIRMS 캐시 재사용",
         "ais": "WebSocket 연결 성공, 20초 window 수신 0",
@@ -5366,14 +5125,14 @@
         "osintEvents": "OSINT 기사 기반 AOI 검토 포인트입니다. 기사 본문 자동 지오코딩/정확 위치 주장은 하지 않습니다."
       },
       "sourceUpdatedAt": {
-        "opensky": "2026-07-04T08:25:02.480Z",
-        "openMeteo": "2026-07-04T08:25:02.480Z",
-        "googleNews": "2026-07-04T08:25:02.480Z",
+        "opensky": "2026-07-04T09:05:02.610Z",
+        "openMeteo": "2026-07-04T09:05:02.610Z",
+        "googleNews": "2026-07-04T09:05:02.610Z",
         "nasaFirms": "2026-07-04T08:18:11.148Z",
-        "ais": "2026-07-04T08:25:02.480Z",
-        "ourAirports": "2026-07-04T08:25:02.480Z",
-        "airRoutes": "2026-07-04T08:25:02.480Z",
-        "osintEvents": "2026-07-04T08:25:02.480Z",
+        "ais": "2026-07-04T09:05:02.610Z",
+        "ourAirports": "2026-07-04T09:05:02.610Z",
+        "airRoutes": "2026-07-04T09:05:02.610Z",
+        "osintEvents": "2026-07-04T09:05:02.610Z",
         "copernicusStac": "2026-07-04T03:08:16.504Z",
         "icaoFir": "2026-07-04T03:08:16.504Z"
       }
@@ -5381,7 +5140,7 @@
   },
   "rateLimitState": {
     "gdelt": {
-      "retryAfterUntil": "2026-07-04T08:43:11.148Z"
+      "retryAfterUntil": "2026-07-04T09:15:02.518Z"
     }
   },
   "errors": [

@@ -1,0 +1,24 @@
+name: record-observations
+
+# Vercel Hobby limits Cron Jobs to once/day, so the 15-minute observation writer is
+# triggered here instead. This job only calls the Vercel endpoint; the adsb.lol/OpenSky
+# fetch runs server-side on Vercel (whose egress adsb.lol does not rate-limit).
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel record endpoint
+        env:
+          RECORD_URL: ${{ secrets.RECORD_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$RECORD_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "RECORD_URL / CRON_SECRET repo secrets are not set" >&2
+            exit 1
+          fi
+          curl -fsS --max-time 120 -H "authorization: Bearer $CRON_SECRET" "$RECORD_URL"
