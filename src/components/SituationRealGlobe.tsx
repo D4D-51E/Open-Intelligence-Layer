@@ -417,12 +417,16 @@ function ensureAirspaceLayers(map: MapLibreMap, visible: boolean) {
     '#7df9ff',
   ];
   const visibility = visible ? 'visible' : 'none';
+  // Only render airspace once zoomed into a detail view — at low zoom the tiles are huge
+  // (whole continents) and airspace is too dense to read, so we skip them for performance.
+  const AIRSPACE_MIN_ZOOM = 5;
   if (!map.getLayer('openaip-airspace-fill')) {
     map.addLayer({
       id: 'openaip-airspace-fill',
       type: 'fill',
       source: 'openaip',
       'source-layer': 'airspaces',
+      minzoom: AIRSPACE_MIN_ZOOM,
       layout: { visibility },
       paint: { 'fill-color': airspaceColor, 'fill-opacity': 0.1 },
     });
@@ -433,6 +437,7 @@ function ensureAirspaceLayers(map: MapLibreMap, visible: boolean) {
       type: 'line',
       source: 'openaip',
       'source-layer': 'airspaces',
+      minzoom: AIRSPACE_MIN_ZOOM,
       layout: { visibility, 'line-join': 'round' },
       paint: { 'line-color': airspaceColor, 'line-width': 1, 'line-opacity': 0.6 },
     });

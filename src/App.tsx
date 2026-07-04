@@ -16,7 +16,7 @@ import { fetchStrategyForZoom, viewportRadiusNm, type Viewport } from './lib/vie
 import { fetchHistoryTracks } from './lib/historyApi';
 import { fetchOsint, type OsintRow } from './lib/osintApi';
 import { fetchNotam, type NotamRow } from './lib/notamApi';
-import type { AirspaceNotice, OsintMapEvent, RegionId, Track } from './lib/types';
+import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, Track } from './lib/types';
 
 type AircraftTypeFilter = 'all' | 'military' | Track['platformType'];
 
@@ -178,8 +178,22 @@ function App() {
   }, [baseScenario, filteredTracks, liveCache, regionId]);
   const anomalies = useMemo(() => detectAnomalies(mergedScenario), [mergedScenario]);
   const scenario = useMemo(() => {
+    // Replace the initial-MVP snapshot OSINT (both the map events and the fusion items)
+    // with the live Neon OSINT feed so no seeded/legacy OSINT remains.
+    const liveOsintItems: OsintItem[] = liveOsint.map((event) => ({
+      id: event.id,
+      source: 'gdelt-cache',
+      regionId: event.regionId,
+      title: event.title,
+      url: event.url,
+      publishedAt: event.observedAt,
+      summary: event.title,
+      tags: event.tags,
+      confidence: event.confidence,
+    }));
     const withLive = {
       ...mergedScenario,
+      osint: showOsint ? liveOsintItems : [],
       osintEvents: showOsint ? liveOsint : [],
       notices: showNotam ? liveNotam : [],
     };

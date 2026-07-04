@@ -8,11 +8,12 @@ const RSS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/53
 // GDELT rate-limits to ~1 request / 5 seconds; anything faster returns 429.
 const GDELT_PACE_MS = 5200;
 
+// GDELT requires OR'd terms to be grouped in parentheses, e.g. "(a OR b)".
 export const gdeltQueries = [
-  'military aircraft OR airspace OR fighter jet',
-  'naval OR warship OR carrier',
-  'missile OR drone OR airstrike',
-  'NATO OR PLA OR KADIZ OR incursion',
+  '(military aircraft OR airspace OR fighter jet)',
+  '(naval OR warship OR carrier)',
+  '(missile OR drone OR airstrike)',
+  '(NATO OR PLA OR KADIZ OR incursion)',
 ];
 
 export const rssFeeds = [
@@ -120,6 +121,25 @@ async function fetchText(url, { timeoutMs = 20000, headers = {} } = {}) {
   }
 }
 
+// GDELT's shared rate limit occasionally still 429s even at the documented 1-req/5s pace
+// (e.g. other clients on the same egress IP). Retry a couple of times with backoff before
+// giving up so one noisy neighbor doesn't kill the whole query.
+async function fetchTextWithRetry(url, opts, { retries = 2, backoffMs = 6000 } = {}) {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fetchText(url, opts);
+    } catch (error) {
+      const isRateLimited = /HTTP 429/.test(String(error));
+      if (isRateLimited && attempt < retries) {
+        await sleep(backoffMs * (attempt + 1));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error('unreachable');
+}
+
 function parseGdeltSeenDate(value) {
   if (!value || !/^\d{8}T\d{6}Z$/.test(value)) return new Date().toISOString();
   return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}T${value.slice(9, 11)}:${value.slice(11, 13)}:${value.slice(13, 15)}Z`;
@@ -133,8 +153,11 @@ async function fetchGdeltQuery(query) {
   url.searchParams.set('maxrecords', '25');
   url.searchParams.set('sort', 'DateDesc');
   url.searchParams.set('timespan', '1d');
-  const text = await fetchText(url, { headers: { 'user-agent': 'AirMaven-OSINT/0.1' } });
-  const json = JSON.parse(text);
+  const text = await fetchTextWithRetry(url, { headers: { 'user-agent': 'AirMaven-OSINT/0.1' } });
+  const trimmed = (text || '').trim();
+  // GDELT reports malformed-query errors as a plain-text 200, not JSON.
+  if (trimmed && !trimmed.startsWith('{')) throw new Error(trimmed.slice(0, 200));
+  const json = JSON.parse(trimmed || '{}');
   const articles = json.articles ?? [];
   return articles.map((article) => {
     const geo = geoFromCountryName(article.sourcecountry);
