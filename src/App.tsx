@@ -14,13 +14,15 @@ import { defaultRegionId, regions } from './lib/regions';
 import { fetchAdsbLolGlobalMilitary, fetchAdsbLolViewportTracks } from './lib/adsbLolApi';
 import { fetchStrategyForZoom, viewportRadiusNm, type Viewport } from './lib/viewport';
 import { fetchHistoryTracks } from './lib/historyApi';
+import { fetchVesselTracks } from './lib/vesselsApi';
 import { fetchOsint, type OsintRow } from './lib/osintApi';
 import { fetchNotam, type NotamRow } from './lib/notamApi';
-import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, Track } from './lib/types';
+import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, ShipTrack, Track } from './lib/types';
 
 type AircraftTypeFilter = 'all' | 'military' | Track['platformType'];
 
 const trackPollIntervalMs = 30_000;
+const vesselPollIntervalMs = 90_000; // AIS store updates ~every 15 min; a slow poll suffices
 const timelineWindowMs = 30 * 60 * 1000; // history playback window per frame
 const timelineSpanMs = 6 * 60 * 60 * 1000; // slider covers the last 6h
 
@@ -163,6 +165,7 @@ function buildTrackPopupHtml(track: Track, identity: AircraftIdentity | null, fu
 function App() {
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [viewportTracks, setViewportTracks] = useState<Track[]>([]);
+  const [liveVessels, setLiveVessels] = useState<ShipTrack[]>([]);
   const [trackLoadState, setTrackLoadState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [trackLastErrorAt, setTrackLastErrorAt] = useState<string | null>(null);
   const [selectedTrackId, setSelectedTrackId] = useState<string | undefined>();
@@ -224,9 +227,10 @@ function App() {
       notices: showNotam ? liveNotam : [],
     };
     const fusionEvents = buildFusionEvents(withLive, anomalies);
-    const withFusion = { ...withLive, fusionEvents };
+    // Live AIS vessels (viewport-polled from Neon) replace the baseline snapshot ships.
+    const withFusion = { ...withLive, fusionEvents, ships: liveVessels.length ? liveVessels : withLive.ships };
     return { ...withFusion, timeline: buildTimelineFromScenario(withFusion) };
-  }, [anomalies, liveNotam, liveOsint, mergedScenario, showNotam, showOsint]);
+  }, [anomalies, liveNotam, liveOsint, liveVessels, mergedScenario, showNotam, showOsint]);
 
   const selectedTrack = useMemo(() => scenario.tracks.find((t) => t.id === selectedTrackId), [scenario.tracks, selectedTrackId]);
   const fusionContext = useMemo(
@@ -330,6 +334,31 @@ function App() {
     void load();
     const timer = window.setInterval(() => void load(), trackPollIntervalMs);
     return () => { cancelled = true; for (const c of inFlight) c.abort(); window.clearInterval(timer); };
+  }, [timelineMode, viewport]);
+
+  // Viewport-driven AIS vessel poll (Neon /api/history?kind=vessels). Vessels update only
+  // ~every 15 min in the store, so a slow poll suffices; each fetch pulls a trailing window
+  // aggregated into per-MMSI trails (항적). Frozen while scrubbing the timeline.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || timelineMode) return undefined;
+    let cancelled = false;
+    let controller = new AbortController();
+    const load = async () => {
+      controller = new AbortController();
+      const v = viewportRef.current;
+      const now = Date.now();
+      const vessels = await fetchVesselTracks({
+        bbox: v?.bbox,
+        from: new Date(now - timelineSpanMs).toISOString(),
+        to: new Date(now).toISOString(),
+        limit: 4000,
+        signal: controller.signal,
+      });
+      if (!cancelled) setLiveVessels(vessels);
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), vesselPollIntervalMs);
+    return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
   }, [timelineMode, viewport]);
 
   // Timeline history fetch (Neon /api/history) when scrubbing.

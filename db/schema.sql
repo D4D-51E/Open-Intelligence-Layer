@@ -27,6 +27,27 @@ CREATE INDEX IF NOT EXISTS idx_track_obs_region_time ON track_observations (regi
 CREATE INDEX IF NOT EXISTS idx_track_obs_icao_time   ON track_observations (icao24, observed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_track_obs_military    ON track_observations (region_id, observed_at DESC) WHERE is_military;
 
+-- AIS vessel observations: one row per vessel per collection tick (AISStream WebSocket).
+-- Powers the viewport vessel layer + trails, mirroring track_observations for aircraft.
+CREATE TABLE IF NOT EXISTS vessel_observations (
+  id            BIGSERIAL PRIMARY KEY,
+  observed_at   TIMESTAMPTZ NOT NULL,
+  recorded_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  region_id     TEXT NOT NULL,
+  mmsi          TEXT NOT NULL,
+  name          TEXT,
+  vessel_type   TEXT NOT NULL DEFAULT 'unknown',
+  lat           DOUBLE PRECISION NOT NULL,
+  lon           DOUBLE PRECISION NOT NULL,
+  sog_knots     DOUBLE PRECISION,
+  cog_deg       INTEGER,
+  source        TEXT NOT NULL DEFAULT 'aisstream',
+  payload       JSONB
+);
+CREATE INDEX IF NOT EXISTS idx_vessel_obs_region_time ON vessel_observations (region_id, observed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_vessel_obs_mmsi_time   ON vessel_observations (mmsi, observed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_vessel_obs_time        ON vessel_observations (observed_at DESC);
+
 -- Region weather snapshots.
 CREATE TABLE IF NOT EXISTS weather_observations (
   id             BIGSERIAL PRIMARY KEY,

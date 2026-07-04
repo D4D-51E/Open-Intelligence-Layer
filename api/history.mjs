@@ -26,7 +26,19 @@ export default async function handler(req, res) {
     const fromIso = from.toISOString();
     const toIso = to.toISOString();
 
+    // Optional bounding box (minLon,minLat,maxLon,maxLat) for the viewport vessel layer.
+    const bboxParts = String(req.query.bbox ?? '').split(',').map((v) => Number(v));
+    const bbox = bboxParts.length === 4 && bboxParts.every((v) => Number.isFinite(v)) ? bboxParts : null;
+
     let rows;
+    if (kind === 'vessels') {
+      const [minLon, minLat, maxLon, maxLat] = bbox ?? [-180, -90, 180, 90];
+      rows = region
+        ? await sql`SELECT observed_at, region_id, mmsi, name, vessel_type, lat, lon, sog_knots, cog_deg FROM vessel_observations WHERE region_id = ${region} AND observed_at BETWEEN ${fromIso} AND ${toIso} AND lat BETWEEN ${minLat} AND ${maxLat} AND lon BETWEEN ${minLon} AND ${maxLon} ORDER BY observed_at DESC LIMIT ${limit}`
+        : await sql`SELECT observed_at, region_id, mmsi, name, vessel_type, lat, lon, sog_knots, cog_deg FROM vessel_observations WHERE observed_at BETWEEN ${fromIso} AND ${toIso} AND lat BETWEEN ${minLat} AND ${maxLat} AND lon BETWEEN ${minLon} AND ${maxLon} ORDER BY observed_at DESC LIMIT ${limit}`;
+      res.status(200).json({ ok: true, kind: 'vessels', region: region || null, from: fromIso, to: toIso, count: rows.length, rows });
+      return;
+    }
     if (kind === 'weather') {
       rows = region
         ? await sql`SELECT observed_at, region_id, temperature_c, wind_gust_kmh, visibility_m, cloud_pct, precip_mm FROM weather_observations WHERE region_id = ${region} AND observed_at BETWEEN ${fromIso} AND ${toIso} ORDER BY observed_at DESC LIMIT ${limit}`

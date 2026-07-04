@@ -21,4 +21,4 @@ jobs:
             echo "RECORD_URL / CRON_SECRET repo secrets are not set" >&2
             exit 1
           fi
-          curl -fsS --max-time 120 -H "authorization: Bearer $CRON_SECRET" "$RECORD_URL"
+          curl -fsS --max-time 290 -H "authorization: Bearer $CRON_SECRET" "$RECORD_URL"

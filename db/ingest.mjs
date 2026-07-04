@@ -4,6 +4,7 @@
 
 import { collectOsint } from './osintIngest.mjs';
 import { collectNotam } from './notamIngest.mjs';
+import { collectVessels } from './aisIngest.mjs';
 
 const ADSB_BASE = 'https://api.adsb.lol/v2';
 const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
@@ -203,9 +204,10 @@ export async function recordAllObservations(sql, { paceMs = 2000, log } = {}) {
     regionResults.push(await recordRegion(sql, region, mil, log));
   }
 
-  // OSINT (GDELT + curated RSS) and NOTAM (FAA) collectors.
+  // OSINT (GDELT + curated RSS), NOTAM (FAA), and AIS vessel (AISStream) collectors.
   let osint = { inserted: 0 };
   let notam = { inserted: 0 };
+  let vessels = { inserted: 0 };
   try {
     osint = await collectOsint(sql, { log });
   } catch (error) {
@@ -216,6 +218,11 @@ export async function recordAllObservations(sql, { paceMs = 2000, log } = {}) {
   } catch (error) {
     log?.(`notam failed: ${String(error)}`);
   }
+  try {
+    vessels = await collectVessels(sql, { regions, log });
+  } catch (error) {
+    log?.(`vessels failed: ${String(error)}`);
+  }
 
   return {
     militaryFeed: mil.aircraft.length,
@@ -223,6 +230,7 @@ export async function recordAllObservations(sql, { paceMs = 2000, log } = {}) {
     totalWeather: regionResults.reduce((sum, r) => sum + r.weather, 0),
     osint: osint.inserted ?? 0,
     notam: notam.inserted ?? 0,
+    vessels: vessels.inserted ?? 0,
     regions: regionResults,
   };
 }
