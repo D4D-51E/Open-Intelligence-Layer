@@ -185,6 +185,14 @@ function buildShipPopupHtml(ship: ShipTrack): string {
 // catalogue is far too dense to read at a global zoom. Below this zoom the layer stays empty.
 const SATELLITE_MIN_ZOOM = 4;
 
+// Keep only satellites within the current viewport, and only past the detail zoom. Shared by the
+// live and timeline satellite views so markers, the panel list, and popups always agree.
+function passesInViewport(passes: SatellitePass[], viewport: Viewport | null): SatellitePass[] {
+  if (!viewport || viewport.zoom < SATELLITE_MIN_ZOOM) return [];
+  const [minLon, minLat, maxLon, maxLat] = viewport.bbox;
+  return passes.filter((s) => s.lon >= minLon && s.lon <= maxLon && s.lat >= minLat && s.lat <= maxLat);
+}
+
 const SATELLITE_ROLE_LABEL: Record<SatellitePass['roleHint'], string> = {
   communications: '통신',
   weather: '기상',
@@ -227,6 +235,7 @@ function App() {
   const [showSatellites, setShowSatellites] = useState(false);
   const [satellitePasses, setSatellitePasses] = useState<SatellitePass[]>([]);
   const satelliteModelsRef = useRef<SatelliteModel[]>([]);
+  const [satModelsLoaded, setSatModelsLoaded] = useState(0);
   const [liveOsint, setLiveOsint] = useState<OsintMapEvent[]>([]);
   const [liveNotam, setLiveNotam] = useState<AirspaceNotice[]>([]);
   const [telegramPosts, setTelegramPosts] = useState<TelegramPost[]>([]);
@@ -247,10 +256,12 @@ function App() {
   const displayedHistoryTracks = useMemo(() => {
     if (!timelineMode) return [];
     const from = timelineValue - timelineTrailMs;
+    const bbox = viewport?.bbox;
+    const inBox = (lon: number, lat: number) => !bbox || (lon >= bbox[0] && lon <= bbox[2] && lat >= bbox[1] && lat <= bbox[3]);
     return historyTracks
-      .map((t) => ({ ...t, points: t.points.filter((p) => { const ms = Date.parse(p.observedAt); return ms >= from && ms <= timelineValue; }) }))
+      .map((t) => ({ ...t, points: t.points.filter((p) => { const ms = Date.parse(p.observedAt); return ms >= from && ms <= timelineValue && inBox(p.lon, p.lat); }) }))
       .filter((t) => t.points.length > 0);
-  }, [historyTracks, timelineMode, timelineValue]);
+  }, [historyTracks, timelineMode, timelineValue, viewport]);
   const displayedHistoryVessels = useMemo(() => {
     if (!timelineMode) return [];
     const from = timelineValue - timelineTrailMs;
@@ -339,13 +350,23 @@ function App() {
 
   // Satellites shown/listed = viewport-filtered (bbox) and only past the detail zoom, mirroring
   // airspace. The panel list and globe markers share this subset so they always agree.
-  const viewportSatellites = useMemo(() => {
-    if (!showSatellites || !viewport || viewport.zoom < SATELLITE_MIN_ZOOM) return [];
-    const [minLon, minLat, maxLon, maxLat] = viewport.bbox;
-    return satellitePasses.filter((s) => s.lon >= minLon && s.lon <= maxLon && s.lat >= minLat && s.lat <= maxLat);
-  }, [showSatellites, satellitePasses, viewport]);
+  const viewportSatellites = useMemo(
+    () => (showSatellites ? passesInViewport(satellitePasses, viewport) : []),
+    [showSatellites, satellitePasses, viewport],
+  );
 
-  const selectedSatellite = useMemo(() => satellitePasses.find((s) => s.id === selectedSatelliteId), [satellitePasses, selectedSatelliteId]);
+  // Timeline satellites: SGP4 needs no stored history — propagate the loaded element sets to the
+  // scrubber's cursor time, then viewport-filter like the live view. Gated on zoom (the memo
+  // returns early before propagating when zoomed out). satModelsLoaded re-runs it once the
+  // catalogue has finished loading even while the cursor is paused.
+  const timelineSatellites = useMemo(() => {
+    if (!timelineMode || !showSatellites || !viewport || viewport.zoom < SATELLITE_MIN_ZOOM) return [];
+    return passesInViewport(propagateSatellites(satelliteModelsRef.current, new Date(timelineValue)), viewport);
+  }, [timelineMode, showSatellites, timelineValue, viewport, satModelsLoaded]);
+
+  const activeSatellites = timelineMode ? timelineSatellites : viewportSatellites;
+
+  const selectedSatellite = useMemo(() => activeSatellites.find((s) => s.id === selectedSatelliteId), [activeSatellites, selectedSatelliteId]);
 
   const focusTrack = useMemo(() => {
     const shipLast = selectedShip?.points.at(-1);
@@ -547,8 +568,11 @@ function App() {
     const from = new Date(now - timelineSpanMs).toISOString();
     const to = new Date(now).toISOString();
     void (async () => {
+      // Fetch all regions (stored rows are tagged with specific sub-regions like 'seoul-airspace')
+      // and viewport-filter client-side — matching how vessels are scoped, so both agree with the
+      // current view instead of a single derived regionId that usually excludes the stored tracks.
       const [rows, vessels] = await Promise.all([
-        fetchHistoryTracks({ region: regionId === 'global' ? undefined : regionId, from, to, limit: 6000, signal: controller.signal }),
+        fetchHistoryTracks({ from, to, limit: 6000, signal: controller.signal }),
         fetchVesselTracks({ bbox: viewportRef.current?.bbox, from, to, limit: 6000, signal: controller.signal }),
       ]);
       if (cancelled) return;
@@ -556,7 +580,7 @@ function App() {
       setHistoryVessels(vessels);
     })();
     return () => { cancelled = true; controller.abort(); };
-  }, [regionId, timelineMode]);
+  }, [timelineMode]);
 
   // Timeline auto-play — advance the cursor in small steps for smooth motion; loop at the end.
   useEffect(() => {
@@ -629,6 +653,7 @@ function App() {
         const models = await fetchSatelliteModels('active', controller.signal);
         if (cancelled) return;
         satelliteModelsRef.current = models;
+        setSatModelsLoaded((n) => n + 1);
       }
       tick();
       timer = window.setInterval(tick, 3000);
@@ -662,7 +687,7 @@ function App() {
           ships={scenario.ships}
           zones={[]}
           referenceLines={[]}
-          satellites={viewportSatellites}
+          satellites={activeSatellites}
           airports={[]}
           airRoutes={[]}
           notices={scenario.notices}
@@ -711,7 +736,7 @@ function App() {
           폭발형 {showSeismic ? 'ON' : 'OFF'}
         </button>
         <button type="button" className={showSatellites ? 'is-active' : ''} onClick={() => setShowSatellites((s) => !s)} title="Celestrak TLE + SGP4 실시간 궤도 위치 (활성 위성 전체, Starlink 포함) · 줌인 시 화면 영역만 표시">
-          위성 {showSatellites ? (satellitePasses.length ? `ON · 화면 ${viewportSatellites.length}` : 'ON · 로딩') : 'OFF'}
+          위성 {showSatellites ? (satellitePasses.length ? `ON · 화면 ${activeSatellites.length}` : 'ON · 로딩') : 'OFF'}
         </button>
         <button type="button" className={showNotam ? 'is-active' : ''} onClick={() => setShowNotam((s) => !s)}>
           NOTAM {showNotam ? 'ON' : 'OFF'}
@@ -761,7 +786,7 @@ function App() {
           ships={scenario.ships}
           selectedShipId={selectedShipId}
           onSelectShip={handleSelectShip}
-          satellites={viewportSatellites}
+          satellites={activeSatellites}
           selectedSatelliteId={selectedSatelliteId}
           onSelectSatellite={handleSelectSatellite}
           satellitesEnabled={showSatellites}
@@ -777,7 +802,7 @@ function App() {
             max={timelineNow}
             value={timelineValue}
             playing={timelinePlaying}
-            label={`${new Date(timelineValue).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · 항적 ${displayedHistoryTracks.length} · 선박 ${displayedHistoryVessels.length}`}
+            label={`${new Date(timelineValue).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · 항적 ${displayedHistoryTracks.length} · 선박 ${displayedHistoryVessels.length} · 위성 ${activeSatellites.length}`}
             onChange={(v) => setTimelineValue(v)}
             onTogglePlay={() => setTimelinePlaying((p) => !p)}
           />
