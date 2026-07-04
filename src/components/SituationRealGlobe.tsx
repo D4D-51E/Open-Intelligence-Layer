@@ -2,7 +2,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
 import { useEffect, useMemo, useRef } from 'react';
 import type { AirportContext, AirRoute, AirspaceContext, AirspaceNotice, Anomaly, OsintMapEvent, ReferenceLine, Region, RegionId, SatellitePass, ShipTrack, Track, WatchZone } from '../lib/types';
-import type { AssessedClaim } from '../lib/claimVerify';
+import { VERDICT_COLOR, type AssessedClaim } from '../lib/claimVerify';
 import type { SeismicEvent } from '../lib/seismicApi';
 import { safeExternalUrl } from '../lib/safeLinks';
 import { MapRegionSwitcher } from './MapRegionSwitcher';
@@ -190,8 +190,8 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
     labels.push(pointFeature(`ship-label-${ship.id}`, last.lat, last.lon, { kind: 'ship-label', title: ship.name, color: '#67e8f9' }));
   }
 
-  // Geolocated Telegram claims render as OSINT markers (orange). No source link on the map —
-  // opening the original source is done from the Claim Verification panel row, not here.
+  // Geolocated Telegram claims render as OSINT markers (orange). Clicking one opens a popup with
+  // the verification-panel scoring (verdict · confidence · evidence) and a link to the source post.
   for (const claim of props.claims) {
     points.push(pointFeature(`claim-${claim.key}`, claim.lat, claim.lon, {
       kind: 'osint',
@@ -199,6 +199,12 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
       title: claim.place,
       source: `Telegram · ${claim.channel}`,
       severity: 'info',
+      claimVerdict: claim.verdict,
+      claimConfidence: claim.confidence,
+      claimEvidence: claim.evidence,
+      claimText: claim.text.slice(0, 240),
+      channel: claim.channel,
+      url: claim.url ?? null,
     }));
     labels.push(pointFeature(`claim-label-${claim.key}`, claim.lat, claim.lon, { kind: 'osint-label', title: claim.place, color: '#ff7a35' }));
   }
@@ -280,7 +286,37 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
   };
 }
 
+const VERDICT_KO: Record<string, string> = { TRUE: '확인', LIKELY: '가능성', 'NOT LIKELY': '미확인', FALSE: '허위' };
+
+// Rich popup for a geolocated Telegram claim — mirrors the Claim Verification panel row: verdict
+// badge + confidence + evidence + a link to the original Telegram post.
+function claimPopupHtml(properties: Properties): string {
+  const place = escapeHtml(String(properties.title ?? '주장'));
+  const channel = escapeHtml(String(properties.channel ?? ''));
+  const verdict = String(properties.claimVerdict);
+  const color = VERDICT_COLOR[verdict as keyof typeof VERDICT_COLOR] ?? '#8aa';
+  const label = VERDICT_KO[verdict] ?? verdict;
+  const conf = typeof properties.claimConfidence === 'number' ? Math.round(properties.claimConfidence) : null;
+  const evidence = properties.claimEvidence ? escapeHtml(String(properties.claimEvidence)) : '';
+  const text = properties.claimText ? escapeHtml(String(properties.claimText)) : '';
+  const safeUrl = typeof properties.url === 'string' ? safeExternalUrl(properties.url) : null;
+  return `
+    <div class="maplibre-hud-popup maplibre-hud-popup--claim">
+      <div class="claim-popup__head">
+        <span class="claim-popup__badge" style="color:${color};border-color:${color}88;background:${color}22">${escapeHtml(label)}${conf != null ? ` ${conf}%` : ''}</span>
+        <strong>${place}</strong>
+      </div>
+      <span class="claim-popup__channel">텔레그램 · ${channel}</span>
+      ${text ? `<p class="claim-popup__text">${text}</p>` : ''}
+      ${evidence ? `<span class="claim-popup__evidence">근거 · ${evidence}</span>` : ''}
+      ${safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noreferrer">원문 텔레그램 열기 ↗</a>` : '<span class="claim-popup__nolink">원문 링크 없음</span>'}
+      <span class="claim-popup__safe">공개 텔레그램 × NASA FIRMS 열적 × 교차출처 · 비표적화</span>
+    </div>
+  `;
+}
+
 function popupHtml(properties: Properties) {
+  if (typeof properties.claimVerdict === 'string') return claimPopupHtml(properties);
   const title = escapeHtml(String(properties.title ?? 'OSINT'));
   const kind = escapeHtml(String(properties.kind ?? 'point'));
   const source = properties.source ? escapeHtml(String(properties.source)) : null;
