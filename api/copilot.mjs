@@ -9,6 +9,14 @@ export const config = { maxDuration: 30 };
 
 const MODEL = process.env.COPILOT_MODEL ?? 'gpt-4o-mini';
 
+// GPT-5 / o-series are reasoning models: they use max_completion_tokens (not max_tokens) and
+// reject a custom temperature. Adapt the request shape by model so gpt-4o-mini and gpt-5.x both work.
+export function chatParams(model, maxOut) {
+  return /^(gpt-5|o\d)/.test(model)
+    ? { max_completion_tokens: Math.max(maxOut, 1400), reasoning_effort: 'low' }
+    : { temperature: 0.3, max_tokens: maxOut };
+}
+
 const SYSTEM_SUMMARY = `당신은 공개 데이터(공개 ADS-B 항적, AIS 선박, OSINT/텔레그램, FAA NOTAM, NASA FIRMS 열적, 공역) 기반 항공·해상 상황인식 융합 분석관입니다. 사용자의 질문에 대해 아래 규칙으로 한국어 브리핑을 작성하세요.
 - 제공된 데이터에만 근거하고, 항공기/선박/사건/수치를 지어내지 마세요.
 - 각 주장 끝에 출처를 대괄호로 표기: [ADS-B] [AIS] [OSINT] [텔레그램] [NOTAM] [FIRMS] [공역].
@@ -56,9 +64,8 @@ export default async function handler(req, res) {
       signal: AbortSignal.timeout(28000),
       body: JSON.stringify({
         model: MODEL,
-        temperature: 0.3,
-        max_tokens: 650,
         messages: [{ role: 'system', content: system }, ...history, { role: 'user', content: userContent }],
+        ...chatParams(MODEL, 650),
       }),
     });
     if (!upstream.ok) {

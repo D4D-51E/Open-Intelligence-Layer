@@ -94,21 +94,29 @@ function reply(chatId, text) {
   return tg('sendMessage', { chat_id: chatId, text: text.slice(0, 4000), disable_web_page_preview: true });
 }
 
+// GPT-5 / o-series are reasoning models: max_completion_tokens (not max_tokens), no custom
+// temperature. Adapt by model so gpt-4o-mini and gpt-5.x both work.
+function chatParams(model, maxOut) {
+  return /^(gpt-5|o\d)/.test(model)
+    ? { max_completion_tokens: Math.max(maxOut, 1400), reasoning_effort: 'low' }
+    : { temperature: 0.3, max_tokens: maxOut };
+}
+
 async function askOpenAI(query, context) {
   if (!process.env.OPENAI_API_KEY) return 'AI 키가 설정되지 않아 요약을 생성할 수 없습니다.';
   try {
+    const model = process.env.COPILOT_MODEL ?? 'gpt-4o-mini';
     const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
       signal: AbortSignal.timeout(26_000),
       body: JSON.stringify({
-        model: process.env.COPILOT_MODEL ?? 'gpt-4o-mini',
-        temperature: 0.3,
-        max_tokens: 500,
+        model,
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content: `현재 내부 데이터(JSON):\n${JSON.stringify(context)}\n\n질문: ${query || '현재 상황을 요약해줘'}\n\n답변을 지금 작성하세요.` },
         ],
+        ...chatParams(model, 500),
       }),
     });
     if (!upstream.ok) return `AI 오류 (${upstream.status}).`;
