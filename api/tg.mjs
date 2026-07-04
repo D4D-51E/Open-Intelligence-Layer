@@ -8,12 +8,54 @@
 // /start & /help always work (they only echo your chat id + usage); data commands require the
 // caller's chat id to be whitelisted. Public data, non-targeting.
 import { getSql } from '../db/client.mjs';
+import { assessClaims } from '../db/claimAssess.mjs';
 
 export const config = { maxDuration: 30 };
 
+// NASA FIRMS thermal hotspots (same source the web verification panel uses) from the static live
+// cache. Merged across regions + deduped. Best-effort: reliability still scores on cross-source
+// corroboration alone if this is unavailable.
+async function fetchThermals(host) {
+  try {
+    const res = await fetch(`https://${host}/data/live-scenarios.json`, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const seen = new Set();
+    const out = [];
+    for (const region of Object.values(json.regions ?? {})) {
+      for (const t of region?.thermalAnomalies ?? []) {
+        const k = t.id ?? `${t.lat},${t.lon},${t.observedAt}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(t);
+      }
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+// Score recent geolocated Telegram claims with the shared reliability logic (assessClaims).
+async function gatherClaims(sql, host) {
+  const rows = await sql`SELECT channel_label, color, text, url, observed_at FROM telegram_posts WHERE observed_at > now() - interval '24 hours' ORDER BY observed_at DESC LIMIT 120`;
+  const posts = rows.map((r) => ({
+    channelLabel: r.channel_label,
+    color: r.color ?? '#8aa',
+    text: r.text,
+    url: r.url ?? undefined,
+    date: r.observed_at instanceof Date ? r.observed_at.toISOString() : String(r.observed_at),
+  }));
+  const thermals = await fetchThermals(host);
+  return assessClaims(posts, thermals, Date.now());
+}
+
 const API = (method) => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/${method}`;
 
-const SYSTEM = `당신은 공개 데이터(공개 ADS-B 항적, AIS 선박, OSINT/텔레그램) 기반 항공·해상 상황인식 융합 분석관입니다. 제공된 JSON 데이터에만 근거해 한국어로 간결히 답하세요. 항공기/선박/사건/수치를 지어내지 말고, 각 주장 끝에 출처를 [ADS-B][AIS][텔레그램] 등으로 표기하세요. 데이터가 희소하면 그렇다고 명시(신호 부재 ≠ 활동 부재). 식별·표적화가 아닌 공개정보 융합 보조입니다. 마크다운 헤더 없이 본문만.`;
+const SYSTEM = `당신은 공개 데이터(공개 ADS-B 항적, AIS 선박, OSINT/텔레그램, NASA FIRMS 열적) 기반 항공·해상 상황인식 융합 분석관입니다. 제공된 JSON 데이터에만 근거해 한국어로 간결히 답하세요.
+- 항공기/선박/사건/수치를 지어내지 말고, 각 주장 끝에 출처를 [ADS-B][AIS][텔레그램][검증] 등으로 표기.
+- context.claims 는 텔레그램 주장의 신뢰도 분석 결과입니다: verdict(TRUE 확인 / LIKELY 가능성 / NOT LIKELY 미확인 / FALSE 허위), confidence(0–100), evidence(근거). 신뢰도를 물으면 이 필드를 근거로 답하세요. 확인=≥2개 독립근거(열적·교차출처), 가능성=단일/부분, 미확인=미교차(취재 공백일 수 있음), 허위=강한 주장인데 예상 신호 부재. [검증]
+- 데이터가 희소하면 그렇다고 명시(신호 부재 ≠ 활동 부재). 식별·표적화가 아닌 공개정보 융합 보조. 마크다운 헤더 없이 본문만.`;
 
 async function readJson(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -72,15 +114,19 @@ async function buildStatus(sql) {
   return { ac: Number(trk?.ac ?? 0), mil: Number(trk?.mil ?? 0), v: Number(ves?.v ?? 0), osint: Number(osi?.n ?? 0), telegram: Number(tgp?.n ?? 0) };
 }
 
-async function buildAiContext(sql) {
+async function buildAiContext(sql, host) {
   const tracks = await sql`SELECT DISTINCT ON (icao24) callsign, region_id, altitude_m, velocity_ms, is_military, round(lat::numeric,2) AS lat, round(lon::numeric,2) AS lon FROM track_observations WHERE observed_at > now() - interval '15 minutes' AND icao24 IS NOT NULL ORDER BY icao24, observed_at DESC LIMIT 40`;
   const posts = await sql`SELECT channel_label, left(text, 200) AS text FROM telegram_posts ORDER BY observed_at DESC LIMIT 10`;
   const [ves] = await sql`SELECT count(DISTINCT mmsi) AS v FROM vessel_observations WHERE observed_at > now() - interval '15 minutes'`;
+  // Reliability-scored claims (same logic as the web verification panel), trimmed for the prompt.
+  const assessed = await gatherClaims(sql, host);
+  const claims = assessed.slice(0, 20).map((c) => ({ place: c.place, channel: c.channel, verdict: c.verdict, confidence: c.confidence, evidence: c.evidence, text: c.text.slice(0, 160) }));
   return {
     generatedAt: new Date().toISOString(),
     tracks: { total: tracks.length, military: tracks.filter((t) => t.is_military).length, sample: tracks },
     vessels: { count: Number(ves?.v ?? 0) },
     telegram: posts,
+    claims,
   };
 }
 
@@ -94,13 +140,16 @@ const HELP = [
   '',
   '/status — 최근 항적·선박·OSINT 요약',
   '/mil — 최근 30분 군용 추정 항적',
-  '/ai <질문> — 현재 데이터 기반 AI 브리핑',
+  '/verify [지명] — 텔레그램 주장 신뢰도 분석 (확인/가능성/미확인/허위)',
+  '/ai <질문> — 현재 데이터 기반 AI 브리핑 (신뢰도 포함)',
   '/help — 도움말',
   '',
   '공개 데이터 융합 보조 · 비표적화',
 ].join('\n');
 
-const DATA_COMMANDS = new Set(['/status', '/mil', '/ai']);
+const DATA_COMMANDS = new Set(['/status', '/mil', '/verify', '/ai']);
+
+const VERDICT_LABEL = { TRUE: '✅확인', LIKELY: '🟡가능성', 'NOT LIKELY': '🟠미확인', FALSE: '🔴허위' };
 
 export default async function handler(req, res) {
   res.setHeader('cache-control', 'no-store');
@@ -160,8 +209,19 @@ async function handleUpdate(req) {
         await reply(chatId, `🪖 군용 추정 항적 (최근 30분, ${rows.length})\n${lines.join('\n')}`);
         return;
       }
+      if (cmd === '/verify') {
+        const claims = await gatherClaims(sql, req.headers.host);
+        const filtered = rest ? claims.filter((c) => c.place.toLowerCase().includes(rest.toLowerCase()) || c.text.toLowerCase().includes(rest.toLowerCase())) : claims;
+        if (!filtered.length) {
+          await reply(chatId, rest ? `"${rest}" 관련 지오로케이트된 텔레그램 주장이 없습니다. (지명이 가제티어에 있고 최근 24h 수집됐는지 확인)` : '지오로케이트 가능한 텔레그램 주장이 아직 없습니다.');
+          return;
+        }
+        const lines = filtered.slice(0, 12).map((c) => `${VERDICT_LABEL[c.verdict]} ${c.confidence}% · ${c.place} (${c.channel})\n  ${c.text.slice(0, 100)}\n  └ ${c.evidence}`);
+        await reply(chatId, `🔎 신뢰도 분석${rest ? ` · "${rest}"` : ''} (상위 ${Math.min(12, filtered.length)}/${filtered.length})\n\n${lines.join('\n\n')}\n\n공개 텔레그램 × NASA FIRMS 열적 × 교차출처 · 비표적화`);
+        return;
+      }
       if (cmd === '/ai') {
-        const context = await buildAiContext(sql);
+        const context = await buildAiContext(sql, req.headers.host);
         const answer = await askOpenAI(rest, context);
         await reply(chatId, answer);
         return;
