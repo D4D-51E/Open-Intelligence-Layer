@@ -61,6 +61,15 @@ const XCH_MAX = 30;
 const STALE_HOURS = 48;
 const MAJOR_CLAIM = /destroy|level(?:ed|led)|wiped?\s?out|completely|obliterat|razed|annihilat|flatten/i;
 
+// Regional thermal activity — WEAK context signal (not event-match): strong fires near the place
+// over a wider window. Small, capped, and NOT a TRUE-qualifying source type — so it nudges 가능성
+// where a region genuinely has recent fire activity, without pretending region-wide fire = a
+// confirmed specific strike.
+const REG_KM = 50;  // "regional" = city-scale radius (event-match thermal above stays tight at 30km)
+const REG_H = 72;
+const REG_FRP_MIN = 10;  // significant fires only — NOT lowered to noise just to lift scores
+const REG_MAX = 12;
+
 // Cross-check one geolocated claim against thermal hotspots + independent channels.
 export function assess(loc, claimT, claimText, selfChannel, thermals, corpus, now) {
   const ledger = [];
@@ -100,6 +109,24 @@ export function assess(loc, claimT, claimText, selfChannel, thermals, corpus, no
     confidence += pts;
     sources.add('xchan');
     ledger.push({ label: 'Cross-source', detail: `${otherCh.size} other channel${otherCh.size > 1 ? 's' : ''} report same place ±${XCH_H}h`, points: pts });
+  }
+
+  // 3) Regional thermal activity (weak context) — only if a tight event-match thermal wasn't already
+  // counted, to avoid double-counting the same fires. Does NOT add a source type.
+  if (!sources.has('thermal')) {
+    let regCount = 0;
+    for (const h of thermals) {
+      if ((h.frpMw ?? 0) < REG_FRP_MIN) continue;
+      if (distKm(loc.lat, loc.lon, h.lat, h.lon) > REG_KM) continue;
+      const ht = new Date(h.observedAt).getTime();
+      if (Number.isNaN(ht) || Math.abs(ht - claimT) / 36e5 > REG_H) continue;
+      regCount += 1;
+    }
+    if (regCount > 0) {
+      const pts = Math.min(REG_MAX, 4 + regCount * 2);
+      confidence += pts;
+      ledger.push({ label: 'Regional heat', detail: `${regCount} strong fire${regCount > 1 ? 's' : ''} ≤${REG_KM}km · ${REG_H}h (regional context, not event-match)`, points: pts });
+    }
   }
 
   confidence = Math.min(100, Math.round(confidence));
