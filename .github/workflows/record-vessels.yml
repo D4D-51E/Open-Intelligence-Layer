@@ -1,13 +1,9 @@
 name: record-vessels
 
-# AIS vessel positions refresh on a tighter cadence than the main observation pass
-# (record-observations.yml, */15) since vessels are the only recorder-bound live layer
-# whose freshness users notice (aircraft are polled live in the browser). Vercel Hobby
-# Cron is daily-only, so this runs here. GitHub's minimum schedule interval is 5 minutes;
-# scheduled runs may be delayed under load.
+# DISABLED: superseded by the always-on Railway collector (collector/), which ingests global
+# AIS continuously. The scheduled trigger is removed to avoid redundant writes; kept as
+# workflow_dispatch only so it can still be run manually as a fallback if the collector is down.
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 jobs:
