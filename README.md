@@ -1,150 +1,113 @@
-# AirMaven
+# [오일이] Open Intelligence Layer (OIL)
 
-D4D T2 **실시간 글로벌 항적 + 다중소스 융합 3D 글로브** 해커톤 프로토타입.
+**공개정보(OSINT)를 실시간으로 융합하고 — 검증하는 — 방어적 상황인식 플랫폼.**
 
-AirMaven은 공개 ADS-B 항적을 전세계 단위로 실시간 노출하고, 같은 화면에서 기상 · 공역(NOTAM/OpenAIP) · OSINT 뉴스 신호를 겹쳐 보여주는 풀스크린 3D 글로브 앱이다. 줌 아웃하면 전세계 군용기 피드, 줌 인하면 뷰포트 단위 상세 항적으로 자동 전환되고, 선택한 항적에는 기상 · 위성 · 공역 · OSINT · 이상탐지 축을 결합한 융합 컨텍스트가 표시된다.
+> **Project Maven은 기밀 영상으로 표적을 찾는다. OIL은 공개정보를 교차검증해 진실을 가린다.**
+> *Open · Verifiable · Non-targeting · 폰 안의 상황실*
+>
+> 🌐 라이브 데모: **https://d4d.n2f.site** · 👥 팀 **오일이** · *(개발명 AirMaven)*
 
-> Safety boundary: this is **analyst decision-support only**. The military marker is public ADS-B flag exposure, not identification. It does not perform target designation, strike recommendation, weapon selection, or automated engagement logic. Only public/open data is used — nothing here is synthesized or fabricated, and no data is scoped to track or target a specific individual.
+---
 
-## UX — 풀스크린 글로브
+## 무엇인가
 
-- 화면 전체를 차지하는 MapLibre GL 3D 글로브(`SituationRealGlobe`)가 기본이자 유일한 뷰. 과거의 4분할 ops 대시보드(`?view=ops`)와 스크롤형 narrative 리포트 모드는 제거되었다.
-- HUD 오버레이: 좌상단에 항적 수 · 군용기 수 · adsb.lol 수신 상태, 우상단에 유형/고도 필터와 공역·OSINT·NOTAM·타임라인 토글, 우측 패널에 선택 항적의 융합 컨텍스트와 이벤트 타임라인.
-- 줌 레벨에 따라 자동으로 전환되는 두 조회 전략(`fetchStrategyForZoom`):
-  - **줌 아웃**: adsb.lol `/v2/mil` 전세계 군용기 피드.
-  - **줌 인**: 현재 뷰포트 bbox 기준 point 조회(`adsb.lol` 반경 질의).
-- **타임라인 모드**: 켜면 실시간 폴링 대신 Neon에 기록된 과거 관측치(`/api/history`)를 스크러버로 재생.
-- **공역 레이어**: OpenAIP 벡터 타일(줌 ≥5에서만 로드) + 실시간 NOTAM 서클.
+전 세계 **항공(ADS-B) · 해상(AIS) · 위성(TLE) · OSINT(텔레그램)** 데이터를 하나의 실시간 3D 지구본에 융합하고, 텔레그램의 "타격 주장"에 **신뢰도(verdict + 신뢰도% + 근거)를 판정**하며, 웹 대시보드와 **텔레그램 봇**으로 조회·조기경보(I&W)까지 제공한다.
 
-## 데이터 경로 (두 개, 둘 다 동작 중)
+핵심은 **모으기(aggregation)를 넘어 판정(adjudication)** — 주장이 사실인지 **NASA 산불 열데이터 × 교차출처**로 대조해 확인 / 가능성 / 미확인 / 허위로 가른다.
 
-**1) baseline — 정적 스냅샷 융합**
+## 핵심 기능
+
+- **다도메인 융합 글로브** — 항공기 · 선박 · 위성(브라우저 내 SGP4 실시간 궤도)을 한 화면에, 뷰포트/줌 필터.
+- **OSINT 신뢰도 판정** — 84개 텔레그램 채널 → 전쟁-결과 필터 → 지오로케이트 → verdict + 0–100% + 근거 원장. FIRMS 실시간 열적 × 교차출처 교차검증(웹·봇 동일 로직).
+- **조기경보 레이어** — 우크라이나 공습경보(air_alert_ua) · EMSC 얕은 진원(폭발형) 지진 · ROK 공역(KADIZ·P-73)·항공로 · OpenAIP 공역 · FAA NOTAM.
+- **AI 코파일럿** — OpenAI **GPT-5.4-mini** 한국어 지역 요약 · 이상탐지 · 멀티턴. 제공 데이터에만 근거·출처 표기.
+- **텔레그램 봇** — 모바일 조회(`/status`·`/mil`·`/verify`·`/ai`) + 능동 푸시(6h 분쟁 브리핑 · 이상 항적[비상 스쿼크·고가치 자산] · 공습경보).
+- **타임라인 리플레이** — 최근 6시간 항적·선박·위성 이동 재생.
+
+## 왜 군에 바로 쓰나 (배치 가능성)
+
+- **100% 공개정보 → UNCLASS 즉시 운용.** 기밀을 못 나누는 **연합·동맹 정보공유**에 강하다.
+- **표적화가 아닌 결정지원·조기경보(I&W)** → 법적·ROE 문턱이 낮아 야전 도입이 빠르다.
+- **이식형** — 서버리스 + 컨테이너 수집기라 온프레미스·에어갭·정부클라우드로 재배치 가능. 봇 전송계층만 승인 메신저로 교체.
+
+## 아키텍처 (요약)
 
 ```
-scripts/fetch-live-data.mjs → public/data/live-scenarios.json → src/lib/baselineData.getScenario → trackFusion / fusion
+공개 소스 ─▶ Vercel Functions(/api, 12개) ─┬─ read: history·telegram·osint·seismic·satellites·firms·openaip
+   +                                        └─ bot: /api/tg (웹훅 + 능동 푸시)
+Railway 상주 수집기(AIS WebSocket + adsb 폴링) ─▶ Neon Postgres(시계열) ◀─ GitHub Actions cron(15분/6h/5분)
+                                                        │
+브라우저 SPA(React + MapLibre 3D + SGP4) ◀── /api ─────┘        Telegram Bot ◀── sendMessage
 ```
 
-OpenSky, CelesTrak, Copernicus STAC, NASA FIRMS, Open-Meteo, OurAirports, ICAO FIR, AISStream, ICAO/SkyLink NOTAM 등 다수의 공개 API를 폴링해 스냅샷 JSON을 만들고, 이를 트랙별 융합 컨텍스트(`trackFusion.ts`)와 AOI 융합 이벤트(`fusion.ts`)의 기반 데이터로 사용한다. 이 스냅샷은 위성/위성패스/기상/공역(FIR)/구형 OSINT 축의 원천이다.
+상세 → [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
 
-**2) 라이브 피벗 — 글로브에 직접 주입되는 실시간 레이어**
+## 기술 스택
 
-- 항적: 브라우저가 줌 레벨에 따라 adsb.lol 전세계 군용 또는 뷰포트 point 조회를 직접 폴링(`src/lib/adsbLolApi.ts`).
-- 관측 이력: Neon 관측 저장소 타임라인(`/api/history`).
-- OSINT: GDELT + 엄선된 국방/국제 RSS 피드가 Neon에 적재되고 `/api/osint`로 조회.
-- NOTAM: FAA `notamSearch` 공개 엔드포인트가 Neon에 적재되고 `/api/notam`으로 조회.
-- 공역 폴리곤: OpenAIP 벡터 타일(`/api/openaip/{z}/{x}/{y}`, 줌 ≥5).
-
-두 경로는 서로를 대체하지 않는다 — baseline 스냅샷이 기상/위성/FIR/구형 OSINT 축을 채우고, 라이브 피벗이 화면에 보이는 항적·OSINT·NOTAM을 실시간으로 덮어쓴다(`App.tsx`의 `mergeLiveScenario`/`scenario` 조립 로직 참고).
-
-## 데이터 소스 & API
-
-| 레이어 | 소스 | 경로 |
-|---|---|---|
-| 전세계 군용 항적 | adsb.lol `/v2/mil` | 브라우저 직접 폴링(줌 아웃), 서버 측 기록(Neon) |
-| 뷰포트 상세 항적 | adsb.lol `/v2/lat/{lat}/lon/{lon}/dist/{nm}` | 브라우저 직접 폴링(줌 인), Vite/Vercel same-origin `/adsb-lol/*` 프록시 경유(CORS 회피) |
-| 항적(baseline) | OpenSky Network `/states/all` | `scripts/fetch-live-data.mjs` → `live-scenarios.json` |
-| 기상 | Open-Meteo | baseline 스냅샷 + 서버 측 기록(Neon `weather_observations`) |
-| 위성/궤도 | CelesTrak GP(`GROUP=stations`) + satellite.js | baseline 스냅샷 |
-| 위성 장면 메타데이터 | Copernicus Data Space STAC `/v1/search` | baseline 스냅샷 |
-| 열이상 탐지 | NASA FIRMS area CSV API | baseline 스냅샷(`NASA_FIRMS_MAP_KEY` 필요) |
-| 공항 컨텍스트 | OurAirports CSV | baseline 스냅샷 |
-| FIR 컨텍스트 | ICAO API Data Service `fir-by-location` | baseline 스냅샷 |
-| AIS 해상 | AISStream WebSocket | baseline 스냅샷(서버 측 전용, 키 필요) |
-| OSINT 뉴스 | GDELT DOC 2.0 + 국방/국제 RSS(defense.gov, Defense News, Breaking Defense, USNI News, The War Zone, 연합뉴스, BBC World, Al Jazeera) | 서버 측 기록(Neon `osint_items`) → `/api/osint` |
-| NOTAM | FAA `notamSearch`(공개, 주요 공항 목록) | 서버 측 기록(Neon `notam_notices`) → `/api/notam` |
-| NOTAM(baseline) | SkyLink NOTAM API(1차) / ICAO NOTAM(fallback) | baseline 스냅샷 |
-| 공역 폴리곤 | OpenAIP 벡터 타일 | `/api/openaip/{z}/{x}/{y}`(서버 측 키 주입 프록시) |
-| 항공기 운영자/기종 식별 | Mictronics readsb 커뮤니티 운영자 데이터셋 | `scripts/fetch-callsign-db.mjs` → `public/data/aircraft-operators.json` |
-
-값이 없거나 실패한 소스는 조용히 빈 값으로 채워지지 않는다 — 해당 축은 "데이터 없음"으로 남고 합성된 값으로 대체되지 않는다.
-
-## 저장소 — Neon Postgres + pgvector
-
-라이브 피벗 레이어(항적/기상/OSINT/NOTAM 관측치)는 Neon Postgres(HTTP 드라이버, `@neondatabase/serverless`) 프로젝트 `airmaven`(ap-southeast-1)에 시계열로 누적된다.
-
-- 테이블: `track_observations`, `weather_observations`, `osint_items`, `notam_notices`, `ingest_runs`(`db/schema.sql`).
-- `osint_items.embedding vector(1536)` 컬럼은 pgvector 확장으로 준비되어 있지만 **Phase 3 — 아직 미구현**이다. nullable이며 임베딩을 채우는 OpenAI 호출은 현재 코드에 없다(추후 OSINT 시맨틱 검색/RAG용 백필 예정).
-- 마이그레이션: `npm run db:migrate`(`scripts/db-migrate.mjs`, `.env`의 `DATABASE_URL` 사용).
-
-## Serverless API 표면 (Vercel Functions)
-
-| 엔드포인트 | 역할 |
+| 영역 | 기술 |
 |---|---|
-| `GET /api/openaip/[z]/[x]/[y]` | OpenAIP 벡터 타일 프록시. `OPENAIP_API_KEY`를 서버 측에서만 주입해 브라우저에 노출하지 않는다. |
-| `GET /api/cron/record` | 관측 기록 실행 엔드포인트. `CRON_SECRET` Bearer 토큰으로 보호되며 adsb.lol 전세계 군용/뷰포트 항적, 기상, OSINT, NOTAM을 Neon에 적재한다(`db/ingest.mjs`, `recordAllObservations`). |
-| `GET /api/history` | 지역/시간범위/종류(`tracks`\|`weather`)별 저장된 관측치 조회. 타임라인 스크러버가 사용. |
-| `GET /api/osint` | 저장된 GDELT/RSS OSINT 항목 조회(지역/티어/시간범위 필터). |
-| `GET /api/notam` | 저장된 FAA NOTAM 조회(bbox 필터). |
+| 프론트엔드 | Vite · React 18 · TypeScript · MapLibre GL(3D) · satellite.js(SGP4) |
+| 서버리스 API | Vercel Functions (Node) — 12 엔드포인트 |
+| DB | Neon Postgres (HTTP 드라이버, 시계열) |
+| 상주 수집기 | Railway 워커 — AISStream WebSocket + adsb.lol 폴링 |
+| 스케줄링 | GitHub Actions cron |
+| AI · 봇 | OpenAI(gpt-5.4-mini) · Telegram Bot(웹훅 + 푸시) |
 
-## 스케줄러 — GitHub Actions (Vercel Hobby cron은 daily-only)
+## 데이터 소스
 
-Vercel Hobby 플랜의 Cron Jobs는 하루 1회로 제한되어 15분 간격 기록에 쓸 수 없다. 대신 `.github/workflows/record-observations.yml`이 **15분마다** `curl`로 `/api/cron/record`를 호출한다(`RECORD_URL`, `CRON_SECRET` 리포지토리 시크릿 필요). adsb.lol/OpenSky 호출 자체는 Vercel 서버리스 함수 안에서 실행된다(Vercel egress는 adsb.lol에서 rate-limit되지 않음).
+공개 **19종** — adsb.lol · AISStream · Celestrak · NASA FIRMS · EMSC · OpenAIP · data.go.kr(ROK 항공로) · 공개 텔레그램 · Tzeva Adom(이스라엘 공식 사이렌 미러) 등. 키가 필요한 소스는 모두 서버 측 환경변수 전용.
+전체 목록 → [`docs/DATA-SOURCES.md`](./docs/DATA-SOURCES.md)
+
+## AI & 텔레그램 봇
+
+웹 AI 코파일럿과 텔레그램 봇은 **동일 공용 모듈**(`db/nameLookup.mjs` 이름조회 · `db/claimAssess.mjs` 신뢰도 채점 · 동일 GPT-5.4-mini)을 써서 내부 데이터 이해·조회가 동등하다. GPT-5 추론 모델용 요청 파라미터도 모델명으로 자동 적응한다.
+상세 → [`docs/AI-AND-BOT.md`](./docs/AI-AND-BOT.md)
 
 ## 로컬 개발
 
 ```bash
 npm install
-npm run dev
+npm run dev          # Vite 앱 + 공개데이터 갱신 루프
+# npm run dev:vite   # Vite만
 ```
-
-`npm run dev`는 Vite 앱과 백그라운드 공개 데이터 갱신 루프(`scripts/dev-live.mjs`)를 함께 기동한다. 로컬 Vite URL(보통 `http://localhost:5173`)을 연다.
-
-Vite 앱만 필요하면(자동 공개 API 갱신 없이):
 
 ```bash
-npm run dev:vite
+npm run build        # tsc -b && vite build
+npm run typecheck    # tsc --noEmit
+npm test             # vitest run (61 tests)
+npm run lint         # eslint
+npm run db:migrate   # Neon 스키마 마이그레이션 (.env 필요)
 ```
 
-기타 스크립트:
+## 배포
 
-```bash
-npm run build            # tsc -b && vite build
-npm run typecheck        # tsc --noEmit
-npm run lint             # eslint . --ext ts,tsx --max-warnings 0
-npm test                 # vitest run
-npm run preview          # vite preview
+- **웹 + API**: Vercel — `npx vercel --prod` (`dist/` 정적 + `api/` 서버리스 함수).
+- **상주 수집기**: Railway — 루트 `Dockerfile`이 `collector/`(AIS WebSocket + adsb 폴링) 실행.
+- **스케줄러**: GitHub Actions — `record-observations`(15분) · `bot-briefing`(6h) · `bot-rapid`(5분).
+- **환경변수**: `.env.example` 참고. 모든 키는 서버 측 전용(브라우저·git 미노출). 요약표 → [`docs/DATA-SOURCES.md`](./docs/DATA-SOURCES.md).
 
-npm run fetch:live       # scripts/fetch-live-data.mjs 1회 실행 → public/data/live-scenarios.json 갱신
-npm run fetch:callsigns  # 커뮤니티 운영자 데이터셋 갱신 → public/data/aircraft-operators.json
-npm run db:migrate       # Neon 스키마 마이그레이션 (.env 필요)
-npm run record           # 로컬에서 1회 관측 기록 실행 (.env 필요)
-npm run live:loop        # scripts/fetch-live-data.mjs 주기 실행 루프만
-```
+## 문서
 
-## 환경 변수
+| 문서 | 내용 |
+|---|---|
+| [`docs/PROJECT.md`](./docs/PROJECT.md) | 제출 개요 · anti-Maven 포지셔닝 · 평가기준 매핑 |
+| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 아키텍처 · 서비스 구조 · 기능 목록 |
+| [`docs/DATA-SOURCES.md`](./docs/DATA-SOURCES.md) | 외부 데이터·API 19종 · 환경변수 |
+| [`docs/AI-AND-BOT.md`](./docs/AI-AND-BOT.md) | AI 코파일럿 & 텔레그램 봇 구조 |
 
-`.env.example`을 복사해 `.env`를 만든다:
+## 안전 원칙 (Non-targeting)
 
-```bash
-cp .env.example .env
-```
+- **결정지원·상황인식 보조**이며 식별·표적화·교전 판단이 아니다. 군용 마커는 공개 ADS-B 플래그 노출일 뿐 신원 식별이 아니다.
+- **합성/조작 데이터 없음** — 공개 데이터만, 라이브 검증된 실데이터만.
+- **정직한 신뢰도** — 근거가 약하면 점수를 억지로 올리지 않는다.
+- 시크릿은 서버 측 전용, 브라우저·git 미노출.
 
-`.env.example`에 각 변수의 용도가 주석으로 정리되어 있다 — 필수 3개(`DATABASE_URL`, `CRON_SECRET`, `OPENAIP_API_KEY`)와 baseline 경로가 사용하는 다수의 선택적 소스 키(OpenSky OAuth2, Copernicus STAC, NASA FIRMS, AISStream, ICAO/SkyLink NOTAM)를 포함한다. **모든 키는 서버 측 전용이며 브라우저나 git에 노출되지 않는다** — 글로브는 airspace 타일과 NOTAM/OSINT 행을 항상 same-origin 프록시(`/api/*`)로 조회한다. `.env`는 gitignored.
+## 한계
 
-## Vercel 배포
+- 공개 ADS-B/AIS는 불완전(민감 항공기·수신기 커버리지). 위성은 TLE **계산** 위치(실측 아님).
+- 이스라엘 경보는 oref.org.il 해외 IP 차단으로 **Tzeva Adom 미러**(동일 공식 데이터) 사용.
+- 크론 기반이라 "즉시"는 ~5–15분 근사(실배치 시 상주 워커로 상향 가능). 텔레그램은 승인 보안망 아님 → 전송계층 교체 전제.
 
-```bash
-npm run build
-npx vercel --prod
-```
+---
 
-Vercel이 `npm run build`를 실행하고 `dist/`를 정적 자산으로 서빙한다(`vercel.json`). `api/` 아래 서버리스 함수가 함께 배포되며, `vercel.json`의 `rewrites`가 `/adsb-lol/*` → `https://api.adsb.lol/*`를 same-origin으로 프록시해 브라우저의 CORS 미지원 adsb.lol 호출을 우회한다.
-
-## 안전 원칙
-
-- 합성/조작 데이터 금지 — 공개 데이터만 사용, 표적화(targeting) 목적 없음.
-- 시크릿(`DATABASE_URL`, `CRON_SECRET`, `OPENAIP_API_KEY` 등)은 서버 측 전용, 브라우저·git에 노출 금지.
-- 군용 마커는 공개 ADS-B `dbFlags` 노출일 뿐, 신원 식별이나 표적 지정이 아니다.
-- OSINT/뉴스 상관관계는 확인(confirmation)이 아니다.
-- 커밋에 co-author 트레일러 없음(전역 규칙).
-
-## Limitations
-
-- 공개 ADS-B 데이터는 불완전하며 민감 항공기는 노출되지 않을 수 있다.
-- OpenSky 익명 접근은 레이트리밋되어 baseline 스냅샷이 성긴 지역 데이터를 반환할 수 있다.
-- GDELT는 공유 IP 레이트리밋으로 0건을 반환할 수 있다 — 이 경우 RSS 피드가 실질적인 OSINT 소스가 된다.
-- CelesTrak은 반복 다운로드를 차단/레이트리밋할 수 있으며, 그 경우 위성 레이어는 비어 있다.
-- AISStream 커버리지는 공개 AIS 수신기와 짧은 fetch 윈도우에 의존한다 — 선박이 적은 AOI는 정상적으로 0척일 수 있다.
-- ICAO FIR 조회는 기본 24시간 TTL 캐시를 사용한다(체험판 키의 호출 제한 때문).
-- `osint_items.embedding`(pgvector)은 Phase 3 미구현 — 현재 임베딩 백필/시맨틱 검색 없음.
-- 위성 레이어는 공개 궤도 인식(orbital awareness)일 뿐 ISR 수집 능력에 대한 주장이 아니다.
+**팀 오일이** · D4D Hackathon
