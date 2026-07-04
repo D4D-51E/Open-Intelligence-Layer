@@ -1,0 +1,21 @@
+name: bot-briefing
+
+# ① 6-hour UA·ME conflict briefing pushed to Telegram subscribers. Vercel Hobby caps native Cron
+# to once/day, so GitHub Actions triggers the push endpoint (folded into /api/tg to stay within
+# the 12-function limit). Server-side work runs on Vercel.
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger briefing push
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET not set" >&2; exit 1; fi
+          curl -fsS --max-time 90 -H "authorization: Bearer $CRON_SECRET" \
+            "https://d4d.n2f.site/api/tg?push=briefing"

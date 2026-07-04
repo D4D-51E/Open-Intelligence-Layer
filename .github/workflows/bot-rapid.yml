@@ -1,0 +1,22 @@
+name: bot-rapid
+
+# ②③ Rapid alerts pushed to Telegram subscribers: anomalous aircraft (emergency squawks +
+# high-value assets) and air-raid/interception sirens. Dedup is handled server-side (bot_push_log)
+# so re-runs never re-notify the same event. NOTE: GitHub Actions */5 cron is best-effort and
+# often runs late under load, so this is "near-immediate" (~5-15 min), not truly instant.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  rapid:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger anomaly + alert push
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET not set" >&2; exit 1; fi
+          curl -fsS --max-time 60 -H "authorization: Bearer $CRON_SECRET" "https://d4d.n2f.site/api/tg?push=anomaly" || true
+          curl -fsS --max-time 60 -H "authorization: Bearer $CRON_SECRET" "https://d4d.n2f.site/api/tg?push=alert" || true

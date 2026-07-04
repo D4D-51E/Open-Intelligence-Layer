@@ -139,3 +139,15 @@ CREATE TABLE IF NOT EXISTS ingest_runs (
   detail      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ingest_runs_time ON ingest_runs (started_at DESC);
+
+-- Telegram bot push: subscribers (who receives proactive alerts) + a dedup log so the 5-min
+-- poll never re-pushes the same emergency/siren/briefing.
+CREATE TABLE IF NOT EXISTS bot_subscribers (
+  chat_id     TEXT PRIMARY KEY,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS bot_push_log (
+  dedup_key   TEXT PRIMARY KEY,
+  pushed_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_bot_push_time ON bot_push_log (pushed_at DESC);

@@ -10,8 +10,11 @@
 import { getSql } from '../db/client.mjs';
 import { assessClaims, geolocate } from '../db/claimAssess.mjs';
 import { fetchFirms, bboxAround } from '../db/firms.mjs';
+import { fetchActiveAlerts } from '../db/airAlert.mjs';
+import { fetchAnomalies } from '../db/anomalyAircraft.mjs';
+import { fetchIsraelAlerts } from '../db/israelAlert.mjs';
 
-export const config = { maxDuration: 30 };
+export const config = { maxDuration: 60 };
 
 // NASA FIRMS thermal hotspots (same source the web verification panel uses) from the static live
 // cache. Merged across regions + deduped. Best-effort: reliability still scores on cross-source
@@ -170,6 +173,83 @@ async function buildMil(sql) {
   return rows;
 }
 
+// ---------- Proactive push (cron-triggered) ----------
+
+async function getSubscribers(sql) {
+  const rows = await sql`SELECT chat_id FROM bot_subscribers`;
+  return rows.map((r) => r.chat_id);
+}
+
+// Send to all subscribers only if dedupKey is new (bot_push_log). Returns true if pushed.
+async function pushItem(sql, subs, dedupKey, text) {
+  const ins = await sql`INSERT INTO bot_push_log (dedup_key) VALUES (${dedupKey}) ON CONFLICT DO NOTHING RETURNING dedup_key`;
+  if (!ins.length) return false;
+  for (const chatId of subs) await tg('sendMessage', { chat_id: chatId, text: text.slice(0, 4000), disable_web_page_preview: true });
+  return true;
+}
+
+const fmtPos = (o) => `${o.lat != null ? `위치 ${o.lat},${o.lon}` : ''}${o.altFt != null ? ` · ${o.altFt.toLocaleString()}ft` : ''}`.trim();
+
+// ① 6-hour UA·ME conflict briefing (OpenAI Korean summary + strike headlines).
+async function jobBriefing(sql, host, subs) {
+  const bucket = Math.floor(Date.now() / (6 * 3600 * 1000));
+  const context = await buildAiContext(sql, host, '우크라이나·중동 분쟁 브리핑');
+  const briefing = await askOpenAI('최근 6시간 우크라이나·중동 분쟁 상황을 한국어로 브리핑하고, 신뢰도 높은 타격 헤드라인 위주로 3~6줄로 정리해줘. 각 줄 끝에 출처·판정 표기.', context);
+  const pushed = await pushItem(sql, subs, `briefing:${bucket}`, `🗞 UA·중동 분쟁 브리핑 (6시간)\n\n${briefing}`);
+  return { pushed };
+}
+
+// ② Anomalous aircraft: emergency squawks + high-value assets (immediate).
+async function jobAnomaly(sql, subs) {
+  const { emergencies, hva } = await fetchAnomalies();
+  let n = 0;
+  const emgBucket = Math.floor(Date.now() / (3 * 3600 * 1000)); // re-notify a persistent emergency every ~3h
+  for (const e of emergencies) {
+    const text = `🚨 비상 스쿼크 ${e.squawk} · ${e.label}\n${e.callsign ?? e.hex}${e.type ? ` (${e.type})` : ''}\n${fmtPos(e)}\n공개 ADS-B · 비표적화`;
+    if (await pushItem(sql, subs, `emg:${e.hex}:${e.squawk}:${emgBucket}`, text)) n += 1;
+  }
+  const hvaBucket = Math.floor(Date.now() / (6 * 3600 * 1000));
+  for (const h of hva) {
+    const text = `✈️ 고가치 자산 · ${h.asset}\n${h.callsign ?? h.hex}${h.type ? ` (${h.type})` : ''}\n${fmtPos(h)}\n공개 ADS-B · 비표적화`;
+    if (await pushItem(sql, subs, `hva:${h.hex}:${hvaBucket}`, text)) n += 1;
+  }
+  return { emergencies: emergencies.length, hva: hva.length, pushed: n };
+}
+
+// ③ Air-raid/interception alerts: official sirens (UA air_alert_ua + IL Pikud HaOref via Tzeva
+// Adom, 100%) + high-confidence telegram strike reports with verdict·confidence%.
+async function jobAlert(sql, host, subs) {
+  let n = 0;
+  const { active } = await fetchActiveAlerts({ pages: 3, maxAgeH: 6 });
+  for (const a of active) {
+    const hb = Math.floor(Date.parse(a.since) / (3600 * 1000));
+    const text = `🔴 공습경보 · 🇺🇦 ${a.oblast}\n발령 ${a.since.slice(11, 16)}Z\n출처 @air_alert_ua (공식) · 신뢰도 100%`;
+    if (await pushItem(sql, subs, `ua-alert:${a.key}:${hb}`, text)) n += 1;
+  }
+  const il = await fetchIsraelAlerts();
+  for (const a of il) {
+    const text = `🔴 공습 사이렌 · 🇮🇱 ${a.city}\n위협 ${a.threat}\n출처 Pikud HaOref (Tzeva Adom 미러) · 신뢰도 100%`;
+    if (await pushItem(sql, subs, `il-alert:${a.id}`, text)) n += 1;
+  }
+  const claims = await gatherClaims(sql, host);
+  for (const c of claims.filter((x) => x.verdict === 'TRUE' || (x.verdict === 'LIKELY' && x.confidence >= 30)).slice(0, 8)) {
+    const text = `📣 타격 보도 · ${c.place} (${c.channel})\n판정 ${VERDICT_LABEL[c.verdict]} ${c.confidence}%\n${c.text.slice(0, 140)}\n근거 ${c.evidence}\n공개 텔레그램×FIRMS×교차출처 · 비표적화`;
+    if (await pushItem(sql, subs, `claim:${c.key}`, text)) n += 1;
+  }
+  return { ua: active.length, il: il.length, pushed: n };
+}
+
+async function runPush(job, host) {
+  const sql = getSql();
+  await sql`DELETE FROM bot_push_log WHERE pushed_at < now() - interval '3 days'`;
+  const subs = await getSubscribers(sql);
+  if (!subs.length) return { subscribers: 0, note: 'no subscribers — /subscribe first' };
+  if (job === 'briefing') return { subscribers: subs.length, ...(await jobBriefing(sql, host, subs)) };
+  if (job === 'anomaly') return { subscribers: subs.length, ...(await jobAnomaly(sql, subs)) };
+  if (job === 'alert') return { subscribers: subs.length, ...(await jobAlert(sql, host, subs)) };
+  return { error: 'unknown job (briefing|anomaly|alert)' };
+}
+
 const HELP = [
   'AirMaven 봇 — 내부 융합 데이터 조회',
   '',
@@ -177,17 +257,32 @@ const HELP = [
   '/mil — 최근 30분 군용 추정 항적',
   '/verify [지명] — 텔레그램 주장 신뢰도 분석 (확인/가능성/미확인/허위)',
   '/ai <질문> — 현재 데이터 기반 AI 브리핑 (신뢰도 포함)',
+  '/subscribe — 푸시 구독 (6h 브리핑·이상항적·공습경보)',
+  '/unsubscribe — 푸시 해제',
   '/help — 도움말',
   '',
   '공개 데이터 융합 보조 · 비표적화',
 ].join('\n');
 
-const DATA_COMMANDS = new Set(['/status', '/mil', '/verify', '/ai']);
+const DATA_COMMANDS = new Set(['/status', '/mil', '/verify', '/ai', '/subscribe', '/unsubscribe']);
 
 const VERDICT_LABEL = { TRUE: '✅확인', LIKELY: '🟡가능성', 'NOT LIKELY': '🟠미확인', FALSE: '🔴허위' };
 
 export default async function handler(req, res) {
   res.setHeader('cache-control', 'no-store');
+  // Cron-triggered proactive push (GitHub Actions): ?push=briefing|anomaly|alert, Bearer CRON_SECRET.
+  const pushJob = req.query?.push;
+  if (pushJob) {
+    const cron = process.env.CRON_SECRET;
+    if (cron && req.headers.authorization !== `Bearer ${cron}`) { res.status(401).json({ ok: false }); return; }
+    try {
+      const result = await runPush(String(pushJob), req.headers.host);
+      res.status(200).json({ ok: true, job: String(pushJob), ...result });
+    } catch (e) {
+      res.status(200).json({ ok: false, error: String(e) });
+    }
+    return;
+  }
   if (req.method !== 'POST') { res.status(405).json({ ok: false }); return; }
   // Verify the webhook secret so only Telegram (with our secret) can invoke this endpoint.
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -232,6 +327,16 @@ async function handleUpdate(req) {
         return;
       }
       const sql = getSql();
+      if (cmd === '/subscribe') {
+        await sql`INSERT INTO bot_subscribers (chat_id) VALUES (${String(chatId)}) ON CONFLICT DO NOTHING`;
+        await reply(chatId, '✅ 푸시 구독 완료. 6시간 UA·중동 브리핑, 이상 항적(비상 스쿼크·고가치 자산), 공습경보를 받습니다.\n해제: /unsubscribe');
+        return;
+      }
+      if (cmd === '/unsubscribe') {
+        await sql`DELETE FROM bot_subscribers WHERE chat_id = ${String(chatId)}`;
+        await reply(chatId, '푸시 구독이 해제되었습니다.');
+        return;
+      }
       if (cmd === '/status') {
         const s = await buildStatus(sql);
         await reply(chatId, `📡 AirMaven 상황 (최근 15분)\n항적 ${s.ac}기 (군용 추정 ${s.mil})\n선박(AIS) ${s.v}척\nOSINT ${s.osint} · 텔레그램 ${s.telegram} (최근 6h)`);
