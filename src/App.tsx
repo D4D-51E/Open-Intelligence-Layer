@@ -405,8 +405,12 @@ function App() {
             { signal: controller.signal },
           );
           if (!res.ok) return;
-          const data = await res.json() as { countryName?: string };
-          setViewportCountry(data.countryName?.trim() || null);
+          const data = await res.json() as { countryName?: string; locality?: string };
+          // countryName over land; locality carries the sea/body-of-water name over open
+          // water (e.g. "황해", "남중국해", "대한해협"). Only overwrite when a place actually
+          // resolved, so panning over a blank patch never regresses the label.
+          const place = data.countryName?.trim() || data.locality?.trim();
+          if (place) setViewportCountry(place);
         } catch {
           // keep the previous value on failure / open ocean
         }
@@ -567,7 +571,7 @@ function App() {
 
       <aside className="globe-hud globe-hud--panel">
         <LiveTrackPanel
-          regionName={viewportCountry ? `${viewportCountry} 상공` : scenario.region.shortName}
+          regionName={viewportCountry ? `${viewportCountry} 상공` : '글로벌'}
           tracks={scenario.tracks}
           selectedTrackId={selectedTrackId}
           onSelectTrack={handleSelectTrack}
