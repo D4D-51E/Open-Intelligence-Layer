@@ -1,7 +1,8 @@
-import { Clock, ExternalLink, Layers, Plane, Radio, ShieldAlert, ShieldCheck, Ship } from 'lucide-react';
+import { Bot, Clock, ExternalLink, Layers, Plane, Radio, ShieldAlert, ShieldCheck, Ship } from 'lucide-react';
 import { useState } from 'react';
 import type { Citation, FusionEvent, ShipTrack, TimelineEvent, Track } from '../lib/types';
 import { VERDICT_COLOR, type AssessedClaim, type Verdict } from '../lib/claimVerify';
+import { CopilotPanel } from './CopilotPanel';
 import type { TrackFusionAxis, TrackFusionContext } from '../lib/trackFusion';
 import type { AircraftIdentity } from '../lib/aircraftIdentity';
 import type { AirspaceKind, AirspaceMatch } from '../lib/noticeAirspace';
@@ -9,7 +10,7 @@ import { vesselTypeLabel } from '../lib/display';
 import { safeExternalUrl } from '../lib/safeLinks';
 import { Timeline } from './Timeline';
 
-type LiveTrackTab = 'tracks' | 'fusion' | 'history' | 'verify';
+type LiveTrackTab = 'tracks' | 'fusion' | 'history' | 'verify' | 'copilot';
 
 type LiveTrackPanelProps = {
   regionName: string;
@@ -26,6 +27,7 @@ type LiveTrackPanelProps = {
   selectedShipId?: string;
   onSelectShip: (shipId: string) => void;
   claims: AssessedClaim[];
+  copilotContext: unknown;
 };
 
 const airspaceKindLabels: Record<AirspaceKind, string> = {
@@ -385,8 +387,17 @@ function ClaimVerifyList({ claims }: { claims: AssessedClaim[] }) {
       <div className="claim-list">
         {claims.map((c) => {
           const safeUrl = c.url ? safeExternalUrl(c.url) : null;
+          const openSource = safeUrl ? () => window.open(safeUrl, '_blank', 'noopener,noreferrer') : undefined;
           return (
-            <article key={c.key} className="claim-row">
+            <article
+              key={c.key}
+              className={`claim-row${safeUrl ? ' claim-row--clickable' : ''}`}
+              onClick={openSource}
+              role={safeUrl ? 'button' : undefined}
+              tabIndex={safeUrl ? 0 : undefined}
+              onKeyDown={openSource ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSource(); } } : undefined}
+              title={safeUrl ? '원본 소스 열기 (새 창)' : undefined}
+            >
               <div className="claim-row__head">
                 <span className="claim-badge" style={{ color: VERDICT_COLOR[c.verdict], borderColor: VERDICT_COLOR[c.verdict], background: `${VERDICT_COLOR[c.verdict]}22` }}>{VERDICT_LABEL[c.verdict]}</span>
                 <span className="claim-place" style={{ color: c.color }}>{c.place}</span>
@@ -402,7 +413,7 @@ function ClaimVerifyList({ claims }: { claims: AssessedClaim[] }) {
                   <span key={i} className="claim-chip" style={{ color: l.points > 0 ? VERDICT_COLOR[c.verdict] : 'var(--muted)' }}>{l.label}{l.points > 0 ? ` +${l.points}` : ''}</span>
                 ))}
               </div>
-              {safeUrl ? <a className="claim-link" href={safeUrl} target="_blank" rel="noreferrer">원문 열기 <ExternalLink size={10} /></a> : null}
+              {safeUrl ? <span className="claim-link">원문 열기 <ExternalLink size={10} /></span> : null}
             </article>
           );
         })}
@@ -427,6 +438,7 @@ export function LiveTrackPanel({
   selectedShipId,
   onSelectShip,
   claims,
+  copilotContext,
 }: LiveTrackPanelProps) {
   const [tab, setTab] = useState<LiveTrackTab>('tracks');
   const selectedTrack = tracks.find((track) => track.id === selectedTrackId);
@@ -468,6 +480,15 @@ export function LiveTrackPanel({
           onClick={() => setTab('verify')}
         >
           <ShieldCheck size={13} /> 검증<span>{claims.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'copilot'}
+          className={tab === 'copilot' ? 'is-active' : ''}
+          onClick={() => setTab('copilot')}
+        >
+          <Bot size={13} /> AI
         </button>
       </div>
 
@@ -517,6 +538,16 @@ export function LiveTrackPanel({
               <span className="pill">신뢰성</span>
             </div>
             <ClaimVerifyList claims={claims} />
+          </div>
+        ) : null}
+
+        {tab === 'copilot' ? (
+          <div className="live-track-pane">
+            <div className="live-track-pane__head">
+              <p className="eyebrow"><Bot size={12} /> AI 코파일럿 · OpenAI</p>
+              <span className="pill">요약·이상탐지</span>
+            </div>
+            <CopilotPanel context={copilotContext} />
           </div>
         ) : null}
       </div>

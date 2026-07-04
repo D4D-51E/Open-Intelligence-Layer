@@ -2,6 +2,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
 import { useEffect, useMemo, useRef } from 'react';
 import type { AirportContext, AirRoute, AirspaceContext, AirspaceNotice, Anomaly, OsintMapEvent, ReferenceLine, Region, RegionId, SatellitePass, ShipTrack, Track, WatchZone } from '../lib/types';
+import { VERDICT_COLOR, type AssessedClaim } from '../lib/claimVerify';
 import { safeExternalUrl } from '../lib/safeLinks';
 import { MapRegionSwitcher } from './MapRegionSwitcher';
 
@@ -19,6 +20,7 @@ type SituationRealGlobeProps = {
   notices: AirspaceNotice[];
   airspaceContexts: AirspaceContext[];
   osintEvents: OsintMapEvent[];
+  claims: AssessedClaim[];
   anomalies: Anomaly[];
   onViewportChange?: (viewport: { bbox: [number, number, number, number]; zoom: number; center: [number, number] }) => void;
   focusTrack?: { id: string; lat: number; lon: number; html: string } | null;
@@ -185,6 +187,19 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
     labels.push(pointFeature(`ship-label-${ship.id}`, last.lat, last.lon, { kind: 'ship-label', title: ship.name, color: '#67e8f9' }));
   }
 
+  // Geolocated Telegram claims, coloured by verification verdict. Click → open the source.
+  for (const claim of props.claims) {
+    const color = VERDICT_COLOR[claim.verdict];
+    points.push(pointFeature(`claim-${claim.key}`, claim.lat, claim.lon, {
+      kind: 'claim',
+      title: `${claim.place} · ${claim.verdict}`,
+      severity: 'info',
+      color,
+      claimUrl: claim.url ?? '',
+    }));
+    labels.push(pointFeature(`claim-label-${claim.key}`, claim.lat, claim.lon, { kind: 'claim-label', title: claim.place, color }));
+  }
+
   for (const airport of props.airports) {
     points.push(pointFeature(airport.id, airport.lat, airport.lon, { kind: 'airport', title: airport.ident, severity: 'info' }));
     labels.push(pointFeature(`airport-label-${airport.id}`, airport.lat, airport.lon, { kind: 'airport-label', title: airport.ident, color: '#c4b5fd' }));
@@ -304,6 +319,7 @@ function bindPointPopup(map: MapLibreMap, getCallbacks: () => PopupCallbacks) {
     const cbs = getCallbacks();
     if (properties.kind === 'track' && typeof properties.trackId === 'string') { cbs.onSelectTrack?.(properties.trackId); return; }
     if (properties.kind === 'ship' && typeof properties.shipId === 'string') { cbs.onSelectShip?.(properties.shipId); return; }
+    if (properties.kind === 'claim' && typeof properties.claimUrl === 'string' && properties.claimUrl) { window.open(properties.claimUrl, '_blank', 'noopener,noreferrer'); return; }
     const coordinates = feature.geometry.type === 'Point'
       ? feature.geometry.coordinates as [number, number]
       : event.lngLat.toArray() as [number, number];
@@ -586,7 +602,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
       type: 'circle',
       source: 'airmaven-points',
       paint: {
-        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 16, 'track', 12, 'osint', 13, 'satellite', 12, 9],
+        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 16, 'track', 12, 'osint', 13, 'satellite', 12, 'claim', 12, 9],
         'circle-color': [
           'match', ['get', 'kind'],
           'region-switch', '#7dffcf',
@@ -602,6 +618,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
           'airspace', '#f1b84b',
           'satellite', '#bda9ff',
           'ship', '#67e8f9',
+          'claim', ['coalesce', ['get', 'color'], '#22ccbb'],
           '#7df9ff',
         ],
         'circle-opacity': 0.14,
@@ -616,7 +633,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
       type: 'circle',
       source: 'airmaven-points',
       paint: {
-        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 6.8, 'track', 5.4, 'osint', 5.8, 'satellite', 5.3, 4.2],
+        'circle-radius': ['match', ['get', 'kind'], 'region-switch', 6.8, 'track', 5.4, 'osint', 5.8, 'satellite', 5.3, 'claim', 5.4, 4.2],
         'circle-color': [
           'match', ['get', 'kind'],
           'region-switch', '#7dffcf',
@@ -632,6 +649,7 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
           'airspace', '#f1b84b',
           'satellite', '#bda9ff',
           'ship', '#67e8f9',
+          'claim', ['coalesce', ['get', 'color'], '#22ccbb'],
           '#7df9ff',
         ],
         'circle-stroke-width': ['match', ['get', 'kind'], 'region-switch', 2.2, 1.2],

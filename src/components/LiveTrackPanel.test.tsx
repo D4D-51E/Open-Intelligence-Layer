@@ -59,6 +59,7 @@ function renderPanel(overrides: Partial<Parameters<typeof LiveTrackPanel>[0]> = 
       ships={[]}
       onSelectShip={onSelectShip}
       claims={[]}
+      copilotContext={{}}
       {...overrides}
     />,
   );

@@ -471,8 +471,8 @@ body {
 .live-track-tabs {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
   padding: 8px;
   border-bottom: 1px solid rgba(125, 249, 255, .1);
   background: rgba(0, 0, 0, .18);
@@ -482,9 +482,12 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   min-height: 32px;
+  font-size: 10.5px;
+  padding: 0 4px;
+  white-space: nowrap;
   border: 1px solid rgba(125, 249, 255, .14);
   border-radius: 999px;
   background: rgba(0, 0, 0, .22);
@@ -654,6 +657,8 @@ body {
 .claim-list { display: flex; flex-direction: column; }
 .claim-row { padding: 9px 2px; border-top: 1px solid rgba(138, 255, 224, .07); display: flex; flex-direction: column; gap: 5px; }
 .claim-row:first-child { border-top: 0; }
+.claim-row--clickable { cursor: pointer; }
+.claim-row--clickable:hover { background: rgba(125, 249, 255, .05); }
 .claim-row__head { display: flex; align-items: center; gap: 7px; }
 .claim-badge { font: 800 9px/1 var(--mono); padding: 2px 6px; border-radius: 999px; border: 1px solid; letter-spacing: .04em; flex: 0 0 auto; }
 .claim-place { font-size: 11px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -667,6 +672,22 @@ body {
 .claim-chip { font: 700 8px/1.3 var(--mono); padding: 2px 5px; border-radius: 4px; background: rgba(255, 255, 255, .06); }
 .claim-link { font-size: 9.5px; color: var(--hud-cyan); display: inline-flex; align-items: center; gap: 3px; }
 .claim-verify__note { display: block; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 9px; line-height: 1.5; color: var(--muted); }
+
+/* AI copilot (OpenAI) pane */
+.copilot { display: flex; flex-direction: column; gap: 8px; }
+.copilot-query { display: flex; gap: 6px; }
+.copilot-query input { flex: 1 1 auto; min-width: 0; background: rgba(0, 0, 0, .4); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font-size: 12px; }
+.copilot-query button, .copilot-anomaly-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid rgba(125, 249, 255, .3); border-radius: 8px; background: rgba(125, 249, 255, .08); color: var(--hud-cyan); font: 800 11px/1 var(--mono); padding: 7px 10px; cursor: pointer; flex: 0 0 auto; }
+.copilot-anomaly-btn { width: 100%; }
+.copilot-query button:disabled, .copilot-anomaly-btn:disabled { opacity: .5; cursor: default; }
+.copilot-error { color: var(--danger); font-size: 11px; line-height: 1.5; }
+.copilot-hint { color: var(--muted); font-size: 11px; line-height: 1.55; }
+.copilot-result { border: 1px solid var(--line); border-radius: var(--radius-sm); background: rgba(0, 0, 0, .3); padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.copilot-result__head { display: inline-flex; align-items: center; gap: 5px; font: 800 9.5px/1.4 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--hud-cyan); }
+.copilot-result p { font-size: 12px; line-height: 1.6; color: var(--ink); white-space: pre-wrap; }
+.copilot-result small { color: var(--muted); font-size: 9.5px; }
+.copilot-spin { animation: copilot-spin 1s linear infinite; }
+@keyframes copilot-spin { to { transform: rotate(360deg); } }
 .live-track-pane__head--sub {
   margin-top: 14px;
   padding-top: 10px;

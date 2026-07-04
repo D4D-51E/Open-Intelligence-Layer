@@ -286,6 +286,30 @@ function App() {
 
   const militaryCount = useMemo(() => scenario.tracks.filter((t) => t.isMilitary).length, [scenario.tracks]);
 
+  // Compact fused-situation snapshot handed to the OpenAI copilot (summary + anomaly analysis).
+  const copilotContext = useMemo(() => ({
+    region: viewportCountry ?? scenario.region.shortName,
+    tracks: {
+      total: scenario.tracks.length,
+      military: militaryCount,
+      sample: scenario.tracks.slice(0, 20).map((t) => {
+        const p = t.points.at(-1);
+        return { callsign: t.callsign, type: t.platformType, military: t.isMilitary, altM: p?.altitudeM, spdMs: p?.velocityMs, hdg: p?.headingDeg, lat: p ? Number(p.lat.toFixed(2)) : undefined, lon: p ? Number(p.lon.toFixed(2)) : undefined };
+      }),
+    },
+    ships: {
+      total: scenario.ships.length,
+      sample: scenario.ships.slice(0, 15).map((s) => {
+        const p = s.points.at(-1);
+        return { name: s.name, type: s.vesselType, lat: p ? Number(p.lat.toFixed(2)) : undefined, lon: p ? Number(p.lon.toFixed(2)) : undefined };
+      }),
+    },
+    osint: scenario.osintEvents.slice(0, 15).map((e) => e.title),
+    telegramClaims: assessedClaims.slice(0, 15).map((c) => ({ place: c.place, verdict: c.verdict, confidence: c.confidence, channel: c.channel })),
+    anomalies: anomalies.map((a) => ({ type: a.type, severity: a.severity, title: a.title, description: a.description, tracks: a.relatedTrackIds })),
+    notamCount: scenario.notices.length,
+  }), [anomalies, assessedClaims, militaryCount, scenario, viewportCountry]);
+
   const handleSelectTrack = useCallback((trackId: string) => {
     setSelectedShipId(undefined);
     setSelectedTrackId((current) => (current === trackId ? undefined : trackId));
@@ -519,6 +543,7 @@ function App() {
           notices={scenario.notices}
           airspaceContexts={[]}
           osintEvents={scenario.osintEvents}
+          claims={showOsint ? assessedClaims : []}
           anomalies={anomalies}
           onViewportChange={handleViewportChange}
           focusTrack={focusTrack}
@@ -608,6 +633,7 @@ function App() {
           selectedShipId={selectedShipId}
           onSelectShip={handleSelectShip}
           claims={assessedClaims}
+          copilotContext={copilotContext}
         />
       </aside>
 

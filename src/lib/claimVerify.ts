@@ -28,6 +28,8 @@ export type AssessedClaim = {
   date: string;
   url?: string;
   place: string;
+  lat: number;
+  lon: number;
   verdict: Verdict;
   confidence: number;
   evidence: string;
@@ -181,7 +183,7 @@ export function assessClaims(posts: TelegramLike[], thermals: ThermalAnomaly[], 
     if (seen.has(key)) continue;
     seen.add(key);
     const a = assess({ lat: g.loc.lat, lon: g.loc.lon }, g.t, g.post.text, g.post.channelLabel, thermals, corpus, now);
-    out.push({ key, channel: g.post.channelLabel, color: g.post.color, text: g.post.text, date: g.post.date, url: g.post.url, place: g.loc.place, ...a });
+    out.push({ key, channel: g.post.channelLabel, color: g.post.color, text: g.post.text, date: g.post.date, url: g.post.url, place: g.loc.place, lat: g.loc.lat, lon: g.loc.lon, ...a });
   }
   const order: Verdict[] = ['TRUE', 'LIKELY', 'NOT LIKELY', 'FALSE'];
   out.sort((a, b) => order.indexOf(a.verdict) - order.indexOf(b.verdict) || b.confidence - a.confidence || new Date(b.date).getTime() - new Date(a.date).getTime());
