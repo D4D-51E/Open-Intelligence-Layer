@@ -4,6 +4,7 @@
 
 import { collectOsint } from './osintIngest.mjs';
 import { collectNotam } from './notamIngest.mjs';
+import { collectTelegram } from './telegramIngest.mjs';
 
 const ADSB_BASE = 'https://api.adsb.lol/v2';
 const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
@@ -218,6 +219,12 @@ export async function recordAllObservations(sql, { paceMs = 2000, log } = {}) {
   } catch (error) {
     log?.(`notam failed: ${String(error)}`);
   }
+  let telegram = { inserted: 0 };
+  try {
+    telegram = await collectTelegram(sql, { log });
+  } catch (error) {
+    log?.(`telegram failed: ${String(error)}`);
+  }
 
   return {
     militaryFeed: mil.aircraft.length,
@@ -225,6 +232,7 @@ export async function recordAllObservations(sql, { paceMs = 2000, log } = {}) {
     totalWeather: regionResults.reduce((sum, r) => sum + r.weather, 0),
     osint: osint.inserted ?? 0,
     notam: notam.inserted ?? 0,
+    telegram: telegram.inserted ?? 0,
     regions: regionResults,
   };
 }

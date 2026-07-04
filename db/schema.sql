@@ -111,6 +111,23 @@ CREATE TABLE IF NOT EXISTS notam_notices (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_notam_natural ON notam_notices (natural_key) WHERE natural_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_notam_geo ON notam_notices (observed_at DESC) WHERE lat IS NOT NULL;
 
+-- Telegram OSINT posts (public t.me channels). Persisted by the collector so the feed is
+-- historical + deduped and the API serves from Neon instead of re-scraping per request.
+CREATE TABLE IF NOT EXISTS telegram_posts (
+  id             BIGSERIAL PRIMARY KEY,
+  observed_at    TIMESTAMPTZ NOT NULL,
+  recorded_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  channel        TEXT NOT NULL,
+  channel_label  TEXT NOT NULL,
+  color          TEXT,
+  post_id        BIGINT,
+  text           TEXT NOT NULL,
+  url            TEXT,
+  natural_key    TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_telegram_natural ON telegram_posts (natural_key);
+CREATE INDEX IF NOT EXISTS idx_telegram_time ON telegram_posts (observed_at DESC);
+
 -- Ingest run log for observability.
 CREATE TABLE IF NOT EXISTS ingest_runs (
   id          BIGSERIAL PRIMARY KEY,

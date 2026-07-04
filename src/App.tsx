@@ -257,6 +257,14 @@ function App() {
     [telegramPosts, scenario.thermalAnomalies],
   );
 
+  // Region view: show only the verification claims inside the current viewport (pan to a
+  // theatre → its claims). Zoomed out globally, the bbox covers everything so all show.
+  const regionalClaims = useMemo(() => {
+    if (!viewport) return assessedClaims;
+    const [minLon, minLat, maxLon, maxLat] = viewport.bbox;
+    return assessedClaims.filter((c) => c.lon >= minLon && c.lon <= maxLon && c.lat >= minLat && c.lat <= maxLat);
+  }, [assessedClaims, viewport]);
+
   const selectedTrack = useMemo(() => scenario.tracks.find((t) => t.id === selectedTrackId), [scenario.tracks, selectedTrackId]);
   const fusionContext = useMemo(
     () => (selectedTrack ? buildTrackFusionContext(selectedTrack, scenario, anomalies) : null),
@@ -305,10 +313,10 @@ function App() {
       }),
     },
     osint: scenario.osintEvents.slice(0, 15).map((e) => e.title),
-    telegramClaims: assessedClaims.slice(0, 15).map((c) => ({ place: c.place, verdict: c.verdict, confidence: c.confidence, channel: c.channel })),
+    telegramClaims: regionalClaims.slice(0, 15).map((c) => ({ place: c.place, verdict: c.verdict, confidence: c.confidence, channel: c.channel })),
     anomalies: anomalies.map((a) => ({ type: a.type, severity: a.severity, title: a.title, description: a.description, tracks: a.relatedTrackIds })),
     notamCount: scenario.notices.length,
-  }), [anomalies, assessedClaims, militaryCount, scenario, viewportCountry]);
+  }), [anomalies, regionalClaims, militaryCount, scenario, viewportCountry]);
 
   const handleSelectTrack = useCallback((trackId: string) => {
     setSelectedShipId(undefined);
@@ -543,7 +551,7 @@ function App() {
           notices={scenario.notices}
           airspaceContexts={[]}
           osintEvents={scenario.osintEvents}
-          claims={showOsint ? assessedClaims : []}
+          claims={showOsint ? regionalClaims : []}
           anomalies={anomalies}
           onViewportChange={handleViewportChange}
           focusTrack={focusTrack}
@@ -632,7 +640,7 @@ function App() {
           ships={scenario.ships}
           selectedShipId={selectedShipId}
           onSelectShip={handleSelectShip}
-          claims={assessedClaims}
+          claims={regionalClaims}
           copilotContext={copilotContext}
         />
       </aside>
