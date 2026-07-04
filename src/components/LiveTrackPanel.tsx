@@ -12,6 +12,9 @@ import { Timeline } from './Timeline';
 
 type LiveTrackTab = 'tracks' | 'fusion' | 'history' | 'verify' | 'copilot';
 
+// Cap tab counts so a growing number never overflows the narrow 5-column tab strip.
+const tabCount = (n: number) => (n > 99 ? '99+' : String(n));
+
 type LiveTrackPanelProps = {
   regionName: string;
   tracks: Track[];
@@ -452,7 +455,7 @@ export function LiveTrackPanel({
           className={tab === 'tracks' ? 'is-active' : ''}
           onClick={() => setTab('tracks')}
         >
-          <Radio size={13} /> 항적<span>{tracks.length}</span>
+          <Radio size={14} /><span className="live-track-tab__label">항적{tracks.length > 0 ? <em>{tabCount(tracks.length)}</em> : null}</span>
         </button>
         <button
           type="button"
@@ -461,7 +464,7 @@ export function LiveTrackPanel({
           className={tab === 'fusion' ? 'is-active' : ''}
           onClick={() => setTab('fusion')}
         >
-          <Layers size={13} /> 융합<span>{fusionEvents.length}</span>
+          <Layers size={14} /><span className="live-track-tab__label">융합{fusionEvents.length > 0 ? <em>{tabCount(fusionEvents.length)}</em> : null}</span>
         </button>
         <button
           type="button"
@@ -470,7 +473,7 @@ export function LiveTrackPanel({
           className={tab === 'history' ? 'is-active' : ''}
           onClick={() => setTab('history')}
         >
-          <Clock size={13} /> 이력<span>{timeline.length}</span>
+          <Clock size={14} /><span className="live-track-tab__label">이력{timeline.length > 0 ? <em>{tabCount(timeline.length)}</em> : null}</span>
         </button>
         <button
           type="button"
@@ -479,7 +482,7 @@ export function LiveTrackPanel({
           className={tab === 'verify' ? 'is-active' : ''}
           onClick={() => setTab('verify')}
         >
-          <ShieldCheck size={13} /> 검증<span>{claims.length}</span>
+          <ShieldCheck size={14} /><span className="live-track-tab__label">검증{claims.length > 0 ? <em>{tabCount(claims.length)}</em> : null}</span>
         </button>
         <button
           type="button"
@@ -488,7 +491,7 @@ export function LiveTrackPanel({
           className={tab === 'copilot' ? 'is-active' : ''}
           onClick={() => setTab('copilot')}
         >
-          <Bot size={13} /> AI
+          <Bot size={14} /><span className="live-track-tab__label">AI</span>
         </button>
       </div>
 

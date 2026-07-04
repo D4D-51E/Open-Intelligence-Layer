@@ -479,20 +479,18 @@ body {
 }
 
 .live-track-tabs button {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
-  min-height: 32px;
-  font-size: 10.5px;
-  padding: 0 4px;
-  white-space: nowrap;
+  min-height: 44px;
+  padding: 6px 2px;
   border: 1px solid rgba(125, 249, 255, .14);
-  border-radius: 999px;
+  border-radius: 12px;
   background: rgba(0, 0, 0, .22);
   color: color-mix(in srgb, var(--muted) 80%, var(--ink));
-  font: 800 11px/1 var(--mono);
   cursor: pointer;
 }
 
@@ -509,17 +507,21 @@ body {
   color: #f7fff9;
 }
 
-.live-track-tabs button span {
-  display: inline-grid;
-  place-items: center;
-  min-width: 22px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: rgba(125, 249, 255, .1);
-  color: var(--hud-cyan);
-  font-size: 10px;
+.live-track-tab__label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  max-width: 100%;
+  font: 800 10px/1 var(--mono);
+  white-space: nowrap;
 }
+.live-track-tab__label em {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--hud-cyan);
+}
+.live-track-tabs button.is-active .live-track-tab__label em { color: #7dffcf; }
 
 .live-track-panel__body {
   flex: 1 1 auto;
