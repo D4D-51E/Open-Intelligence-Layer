@@ -44,6 +44,7 @@ const fusionContext: TrackFusionContext = {
 function renderPanel(overrides: Partial<Parameters<typeof LiveTrackPanel>[0]> = {}) {
   const onSelectTrack = vi.fn();
   const onSelectShip = vi.fn();
+  const onSelectSatellite = vi.fn();
   render(
     <LiveTrackPanel
       regionName="수도권"
@@ -58,12 +59,15 @@ function renderPanel(overrides: Partial<Parameters<typeof LiveTrackPanel>[0]> = 
       activeAirspace={[]}
       ships={[]}
       onSelectShip={onSelectShip}
+      satellites={[]}
+      onSelectSatellite={onSelectSatellite}
+      satellitesEnabled={false}
       claims={[]}
       copilotContext={{}}
       {...overrides}
     />,
   );
-  return { onSelectTrack, onSelectShip };
+  return { onSelectTrack, onSelectShip, onSelectSatellite };
 }
 
 describe('LiveTrackPanel', () => {

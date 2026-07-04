@@ -181,6 +181,29 @@ function buildShipPopupHtml(ship: ShipTrack): string {
   </div>`;
 }
 
+// Satellites are only rendered/listed once zoomed into a detail view (like airspace) — the full
+// catalogue is far too dense to read at a global zoom. Below this zoom the layer stays empty.
+const SATELLITE_MIN_ZOOM = 4;
+
+const SATELLITE_ROLE_LABEL: Record<SatellitePass['roleHint'], string> = {
+  communications: '통신',
+  weather: '기상',
+  'earth observation': '지구관측',
+  'public orbital awareness': '궤도인식',
+};
+
+function buildSatellitePopupHtml(sat: SatellitePass): string {
+  const rows: string[] = [];
+  rows.push(`<div><b>분류</b> ${escapeHtml(SATELLITE_ROLE_LABEL[sat.roleHint])} (이름 기반 추정)</div>`);
+  if (sat.noradId) rows.push(`<div><b>NORAD</b> ${escapeHtml(sat.noradId)}</div>`);
+  rows.push(`<div><b>고도</b> ${sat.altitudeKm.toLocaleString()}km · ${escapeHtml(sat.direction)}</div>`);
+  return `<div class="globe-track-popup__body">
+    <div class="globe-track-popup__head">${escapeHtml(sat.name)}<span class="globe-track-popup__mil globe-track-popup__sat">위성</span></div>
+    ${rows.join('')}
+    <div class="globe-track-popup__safe">공개 TLE·SGP4 계산 위치 · 비표적화</div>
+  </div>`;
+}
+
 function App() {
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [viewportTracks, setViewportTracks] = useState<Track[]>([]);
@@ -190,6 +213,7 @@ function App() {
   const [trackLastErrorAt, setTrackLastErrorAt] = useState<string | null>(null);
   const [selectedTrackId, setSelectedTrackId] = useState<string | undefined>();
   const [selectedShipId, setSelectedShipId] = useState<string | undefined>();
+  const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | undefined>();
   const [operatorDb, setOperatorDb] = useState<OperatorDb | null>(null);
   const [liveCache, setLiveCache] = useState<LiveScenarioCache | null>(null);
   const [aircraftTypeFilter, setAircraftTypeFilter] = useState<AircraftTypeFilter>('all');
@@ -313,15 +337,28 @@ function App() {
 
   const selectedShip = useMemo(() => scenario.ships.find((s) => s.id === selectedShipId), [scenario.ships, selectedShipId]);
 
+  // Satellites shown/listed = viewport-filtered (bbox) and only past the detail zoom, mirroring
+  // airspace. The panel list and globe markers share this subset so they always agree.
+  const viewportSatellites = useMemo(() => {
+    if (!showSatellites || !viewport || viewport.zoom < SATELLITE_MIN_ZOOM) return [];
+    const [minLon, minLat, maxLon, maxLat] = viewport.bbox;
+    return satellitePasses.filter((s) => s.lon >= minLon && s.lon <= maxLon && s.lat >= minLat && s.lat <= maxLat);
+  }, [showSatellites, satellitePasses, viewport]);
+
+  const selectedSatellite = useMemo(() => satellitePasses.find((s) => s.id === selectedSatelliteId), [satellitePasses, selectedSatelliteId]);
+
   const focusTrack = useMemo(() => {
     const shipLast = selectedShip?.points.at(-1);
     if (selectedShip && shipLast) {
       return { id: selectedShip.id, lat: shipLast.lat, lon: shipLast.lon, html: buildShipPopupHtml(selectedShip) };
     }
+    if (selectedSatellite) {
+      return { id: selectedSatellite.id, lat: selectedSatellite.lat, lon: selectedSatellite.lon, html: buildSatellitePopupHtml(selectedSatellite) };
+    }
     const last = selectedTrack?.points.at(-1);
     if (!selectedTrack || !last) return null;
     return { id: selectedTrack.id, lat: last.lat, lon: last.lon, html: buildTrackPopupHtml(selectedTrack, aircraftIdentity, fusionContext) };
-  }, [aircraftIdentity, fusionContext, selectedShip, selectedTrack]);
+  }, [aircraftIdentity, fusionContext, selectedShip, selectedSatellite, selectedTrack]);
 
   const militaryCount = useMemo(() => scenario.tracks.filter((t) => t.isMilitary).length, [scenario.tracks]);
 
@@ -351,15 +388,23 @@ function App() {
 
   const handleSelectTrack = useCallback((trackId: string) => {
     setSelectedShipId(undefined);
+    setSelectedSatelliteId(undefined);
     setSelectedTrackId((current) => (current === trackId ? undefined : trackId));
   }, []);
   const handleSelectShip = useCallback((shipId: string) => {
     setSelectedTrackId(undefined);
+    setSelectedSatelliteId(undefined);
     setSelectedShipId((current) => (current === shipId ? undefined : shipId));
+  }, []);
+  const handleSelectSatellite = useCallback((satId: string) => {
+    setSelectedTrackId(undefined);
+    setSelectedShipId(undefined);
+    setSelectedSatelliteId((current) => (current === satId ? undefined : satId));
   }, []);
   const handleFocusClose = useCallback(() => {
     setSelectedTrackId(undefined);
     setSelectedShipId(undefined);
+    setSelectedSatelliteId(undefined);
   }, []);
   const handleViewportChange = useCallback((v: Viewport) => {
     viewportRef.current = v;
@@ -617,7 +662,7 @@ function App() {
           ships={scenario.ships}
           zones={[]}
           referenceLines={[]}
-          satellites={showSatellites ? satellitePasses : []}
+          satellites={viewportSatellites}
           airports={[]}
           airRoutes={[]}
           notices={scenario.notices}
@@ -665,8 +710,8 @@ function App() {
         <button type="button" className={showSeismic ? 'is-active' : ''} onClick={() => setShowSeismic((s) => !s)} title="EMSC 얕은 진원(≤2km) 지진 = 폭발/타격 가능">
           폭발형 {showSeismic ? 'ON' : 'OFF'}
         </button>
-        <button type="button" className={showSatellites ? 'is-active' : ''} onClick={() => setShowSatellites((s) => !s)} title="Celestrak TLE + SGP4 실시간 궤도 위치 (활성 위성 전체, Starlink 포함)">
-          위성 {showSatellites ? `ON · ${satellitePasses.length}` : 'OFF'}
+        <button type="button" className={showSatellites ? 'is-active' : ''} onClick={() => setShowSatellites((s) => !s)} title="Celestrak TLE + SGP4 실시간 궤도 위치 (활성 위성 전체, Starlink 포함) · 줌인 시 화면 영역만 표시">
+          위성 {showSatellites ? (satellitePasses.length ? `ON · 화면 ${viewportSatellites.length}` : 'ON · 로딩') : 'OFF'}
         </button>
         <button type="button" className={showNotam ? 'is-active' : ''} onClick={() => setShowNotam((s) => !s)}>
           NOTAM {showNotam ? 'ON' : 'OFF'}
@@ -716,6 +761,10 @@ function App() {
           ships={scenario.ships}
           selectedShipId={selectedShipId}
           onSelectShip={handleSelectShip}
+          satellites={viewportSatellites}
+          selectedSatelliteId={selectedSatelliteId}
+          onSelectSatellite={handleSelectSatellite}
+          satellitesEnabled={showSatellites}
           claims={regionalClaims}
           copilotContext={copilotContext}
         />

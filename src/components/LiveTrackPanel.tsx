@@ -1,6 +1,6 @@
-import { Bot, Clock, ExternalLink, Layers, Plane, Radio, ShieldAlert, ShieldCheck, Ship } from 'lucide-react';
+import { Bot, Clock, ExternalLink, Layers, Plane, Radio, Satellite, ShieldAlert, ShieldCheck, Ship } from 'lucide-react';
 import { useState } from 'react';
-import type { Citation, FusionEvent, ShipTrack, TimelineEvent, Track } from '../lib/types';
+import type { Citation, FusionEvent, SatellitePass, ShipTrack, TimelineEvent, Track } from '../lib/types';
 import { VERDICT_COLOR, type AssessedClaim, type Verdict } from '../lib/claimVerify';
 import { CopilotPanel } from './CopilotPanel';
 import type { TrackFusionAxis, TrackFusionContext } from '../lib/trackFusion';
@@ -29,8 +29,19 @@ type LiveTrackPanelProps = {
   ships: ShipTrack[];
   selectedShipId?: string;
   onSelectShip: (shipId: string) => void;
+  satellites: SatellitePass[];
+  selectedSatelliteId?: string;
+  onSelectSatellite: (satelliteId: string) => void;
+  satellitesEnabled: boolean;
   claims: AssessedClaim[];
   copilotContext: unknown;
+};
+
+const satelliteRoleLabel: Record<SatellitePass['roleHint'], string> = {
+  communications: '통신',
+  weather: '기상',
+  'earth observation': '지구관측',
+  'public orbital awareness': '궤도인식',
 };
 
 const airspaceKindLabels: Record<AirspaceKind, string> = {
@@ -317,6 +328,51 @@ function ShipTable({ ships, selectedShipId, onSelectShip }: { ships: ShipTrack[]
   );
 }
 
+function SatelliteTable({ satellites, selectedSatelliteId, onSelectSatellite, enabled }: { satellites: SatellitePass[]; selectedSatelliteId?: string; onSelectSatellite: (id: string) => void; enabled: boolean }) {
+  if (!enabled) {
+    return <p className="live-track-empty">HUD의 위성 토글을 켜면 실시간 궤도 위성이 표시됩니다.</p>;
+  }
+  if (satellites.length === 0) {
+    return <p className="live-track-empty">현재 화면에 위성이 없습니다. 지도를 확대(줌인)하면 화면 영역을 지나는 위성만 표시됩니다. 공개 TLE로 계산한 위치입니다.</p>;
+  }
+  // Show the lowest (typically most operationally relevant / fastest-moving) first, capped so a
+  // dense overhead pass never floods the DOM. Bulk catalogues can put hundreds in one viewport.
+  const sorted = [...satellites].sort((a, b) => a.altitudeKm - b.altitudeKm).slice(0, 200);
+  return (
+    <div className="live-track-table live-track-table--sats" role="table" aria-label="실시간 위성 목록">
+      <div className="live-track-table__head" role="row">
+        <span role="columnheader">위성</span>
+        <span role="columnheader">분류</span>
+        <span role="columnheader">고도</span>
+        <span role="columnheader">방향</span>
+      </div>
+      <div className="live-track-table__body">
+        {sorted.map((sat) => {
+          const active = sat.id === selectedSatelliteId;
+          return (
+            <button
+              key={sat.id}
+              type="button"
+              role="row"
+              className={`live-track-row live-track-row--sat ${active ? 'is-active' : ''}`}
+              aria-pressed={active}
+              onClick={() => onSelectSatellite(sat.id)}
+            >
+              <span className="live-track-row__callsign" role="cell">
+                <Satellite size={13} aria-label="위성" />
+                {sat.name}
+              </span>
+              <span role="cell">{satelliteRoleLabel[sat.roleHint]}</span>
+              <span role="cell">{sat.altitudeKm.toLocaleString('ko-KR')}km</span>
+              <span role="cell">{sat.direction}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TrackFusionCard({ context }: { context: TrackFusionContext | null }) {
   if (!context) {
     return <p className="track-fusion-empty">항적을 선택하면 궤도·기상·공역·OSINT 융합 컨텍스트를 표시합니다.</p>;
@@ -440,6 +496,10 @@ export function LiveTrackPanel({
   ships,
   selectedShipId,
   onSelectShip,
+  satellites,
+  selectedSatelliteId,
+  onSelectSatellite,
+  satellitesEnabled,
   claims,
   copilotContext,
 }: LiveTrackPanelProps) {
@@ -497,19 +557,36 @@ export function LiveTrackPanel({
 
       <div className="live-track-panel__body">
         {tab === 'tracks' ? (
-          <div className="live-track-pane">
-            <div className="live-track-pane__head">
-              <p className="eyebrow">Live Tracks · {regionName}</p>
-              {militaryCount > 0 ? <span className="pill pill--military"><ShieldAlert size={12} /> 군용 {militaryCount}기</span> : null}
+          <div className="live-track-pane live-track-pane--live">
+            <div className="live-track-lists">
+              <section className="live-track-group">
+                <div className="live-track-pane__head">
+                  <p className="eyebrow"><Radio size={12} /> Live Tracks · {regionName}</p>
+                  {militaryCount > 0 ? <span className="pill pill--military"><ShieldAlert size={12} /> 군용 {militaryCount}기</span> : tracks.length > 0 ? <span className="pill">{tracks.length}기</span> : null}
+                </div>
+                <TrackTable tracks={tracks} selectedTrackId={selectedTrackId} onSelectTrack={onSelectTrack} />
+              </section>
+              <section className="live-track-group">
+                <div className="live-track-pane__head">
+                  <p className="eyebrow"><Ship size={12} /> Live Vessels · AIS</p>
+                  {ships.length > 0 ? <span className="pill">{ships.length}척</span> : null}
+                </div>
+                <ShipTable ships={ships} selectedShipId={selectedShipId} onSelectShip={onSelectShip} />
+              </section>
+              <section className="live-track-group">
+                <div className="live-track-pane__head">
+                  <p className="eyebrow"><Satellite size={12} /> Live Satellites · TLE</p>
+                  {satellitesEnabled && satellites.length > 0 ? <span className="pill">{satellites.length}기</span> : null}
+                </div>
+                <SatelliteTable satellites={satellites} selectedSatelliteId={selectedSatelliteId} onSelectSatellite={onSelectSatellite} enabled={satellitesEnabled} />
+              </section>
             </div>
-            <TrackTable tracks={tracks} selectedTrackId={selectedTrackId} onSelectTrack={onSelectTrack} />
-            <div className="live-track-pane__head live-track-pane__head--sub">
-              <p className="eyebrow"><Ship size={12} /> Live Vessels · AIS</p>
-              {ships.length > 0 ? <span className="pill">{ships.length}척</span> : null}
-            </div>
-            <ShipTable ships={ships} selectedShipId={selectedShipId} onSelectShip={onSelectShip} />
-            <AircraftIdentityCard identity={identity} track={selectedTrack} activeAirspace={activeAirspace} />
-            <TrackFusionCard context={fusionContext} />
+            {selectedTrack ? (
+              <div className="live-track-detail">
+                <AircraftIdentityCard identity={identity} track={selectedTrack} activeAirspace={activeAirspace} />
+                <TrackFusionCard context={fusionContext} />
+              </div>
+            ) : null}
           </div>
         ) : null}
 
