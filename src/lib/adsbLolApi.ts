@@ -1,6 +1,21 @@
 import type { Region, Track } from './types';
 import { isWithinRegion, normalizeAdsbList, regionRadiusNm, type AdsbApiResponse } from './adsbCommon';
 
+// A synthetic Region for viewport-driven (non-AOI-preset) fetching. normalizeAdsbList only
+// uses region.id (for the track id prefix) and region.bbox (for mil intersection), so a
+// lightweight object with a stable id is sufficient.
+function viewportRegion(center: [number, number], bbox: [number, number, number, number]): Region {
+  return {
+    id: 'global',
+    name: 'viewport',
+    shortName: 'viewport',
+    description: '',
+    bbox,
+    center,
+    zoom: 4,
+  };
+}
+
 // adsb.lol is a free, no-key community ADS-B aggregator with the same readsb JSON
 // shape as Airplanes.live. We use two endpoints:
 //   - /v2/lat/{lat}/lon/{lon}/dist/{nm}  → regional point feed (redundant coverage)
@@ -91,4 +106,35 @@ export async function fetchAdsbLolTracks({
     if (!existing || (track.isMilitary && !existing.isMilitary)) merged.set(track.id, track);
   }
   return [...merged.values()].sort((a, b) => (b.points[0]?.velocityMs ?? 0) - (a.points[0]?.velocityMs ?? 0));
+}
+
+// Viewport-driven (zoomed-in) point feed at an arbitrary map center — not an AOI preset.
+// Point feed already includes military aircraft (via dbFlags), so the /v2/mil overlay is
+// skipped here; worldwide military is fetched separately at low zoom.
+export async function fetchAdsbLolViewportTracks(opts: {
+  center: [number, number];
+  bbox: [number, number, number, number];
+  radiusNm: number;
+  signal?: AbortSignal;
+  baseUrl?: string;
+  rateLimitMs?: number;
+}): Promise<Track[]> {
+  return fetchAdsbLolTracks({
+    region: viewportRegion(opts.center, opts.bbox),
+    radiusNm: opts.radiusNm,
+    signal: opts.signal,
+    baseUrl: opts.baseUrl,
+    rateLimitMs: opts.rateLimitMs,
+    includeMilitary: false,
+  });
+}
+
+// Worldwide military-only feed (adsb.lol /v2/mil), unfiltered — used when the globe is
+// zoomed out to a global view.
+export async function fetchAdsbLolGlobalMilitary(opts: { signal?: AbortSignal; baseUrl?: string; rateLimitMs?: number } = {}): Promise<Track[]> {
+  const safeBase = String(opts.baseUrl ?? apiBaseUrl).replace(/\/$/, '');
+  await enforceRateLimit(opts.rateLimitMs ?? defaultRateLimitMs);
+  const payload = await fetchAdsbJson(`${safeBase}/mil`, opts.signal);
+  const region = viewportRegion([20, 0], [-180, -85, 180, 85]);
+  return normalizeAdsbList(payload, region, { idPrefix: 'adsb-lol-mil', sourceLabel: 'adsb.lol 군용', forceMilitary: true });
 }

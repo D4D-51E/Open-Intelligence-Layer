@@ -221,18 +221,6 @@ npx vercel --prod
 
 The deployed dashboard reads `public/data/live-scenarios.json` as a snapshot. Vercel will not keep `npm run dev`, `npm run dev:live`, or `scripts/live-data-loop.mjs` running as a background process after deployment. If you need continuously refreshed shared data, add a separate scheduled backend/storage path instead of relying on the Vite static app alone.
 
-## Cloudflare deployment
-
-Cloudflare is configured as a single Worker with static assets, API routes, a Cron Trigger, and Workers KV. The Worker serves `dist/`, exposes `/api/live-scenarios`, and refreshes one AOI per cron run into the `LIVE_SCENARIOS` KV namespace.
-
-```bash
-npm run build
-npx wrangler kv key put airmaven:live-scenarios --path public/data/live-scenarios.json --binding LIVE_SCENARIOS --remote
-npm run deploy:cloudflare
-```
-
-The default cron is every 15 minutes. Because the current target is Cloudflare Workers Free, the Worker uses a lightweight rotating-AOI refresh: each scheduled run updates one region's OpenSky, Open-Meteo, and OSINT fields while preserving cached static layers and the other regions. The browser still polls `/api/live-scenarios` every 30 seconds and falls back to `/data/live-scenarios.json` when the API is unavailable.
-
 ## Near-real-time refresh mode
 
 Near-real-time refresh is the default development mode:

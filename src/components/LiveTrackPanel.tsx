@@ -133,21 +133,104 @@ function CitationLink({ citation, showLabel, className, iconSize = 11 }: { citat
     : <small className={className}>{text}</small>;
 }
 
+type SortKey = 'callsign' | 'type' | 'altitude' | 'speed' | 'recency' | 'military';
+type SortDir = 'asc' | 'desc';
+
+const sortColumns: Array<{ key: SortKey; label: string }> = [
+  { key: 'callsign', label: '호출부호' },
+  { key: 'type', label: '유형' },
+  { key: 'altitude', label: '고도' },
+  { key: 'speed', label: '속도' },
+  { key: 'recency', label: '최신성' },
+];
+
+function trackSortValue(track: Track, key: SortKey): string | number {
+  const last = track.points.at(-1);
+  switch (key) {
+    case 'callsign':
+      return track.callsign;
+    case 'type':
+      return track.platformType;
+    case 'altitude':
+      return last ? last.altitudeM : -Infinity;
+    case 'speed':
+      return last ? last.velocityMs : -Infinity;
+    case 'recency': {
+      const observedMs = last ? Date.parse(last.observedAt) : NaN;
+      return Number.isNaN(observedMs) ? -Infinity : observedMs;
+    }
+    case 'military':
+      return Number(track.isMilitary);
+    default:
+      return -Infinity;
+  }
+}
+
+function compareSortValues(a: string | number, b: string | number): number {
+  if (typeof a === 'string' && typeof b === 'string') return a.localeCompare(b);
+  return (a as number) - (b as number);
+}
+
+function SortCaret({ direction }: { direction: SortDir }) {
+  return <span className="live-track-sort-caret">{direction === 'asc' ? '▲' : '▼'}</span>;
+}
+
 function TrackTable({ tracks, selectedTrackId, onSelectTrack }: Pick<LiveTrackPanelProps, 'tracks' | 'selectedTrackId' | 'onSelectTrack'>) {
+  const [sortKey, setSortKey] = useState<SortKey>('recency');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
   if (tracks.length === 0) {
     return <p className="live-track-empty">현재 선택 AOI에 노출된 실시간 항적이 없습니다. 합성 항적은 만들지 않습니다.</p>;
   }
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }
+
+  const sortedTracks = [...tracks].sort((a, b) => {
+    const cmp = compareSortValues(trackSortValue(a, sortKey), trackSortValue(b, sortKey));
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
   return (
     <div className="live-track-table" role="table" aria-label="실시간 항적 목록">
       <div className="live-track-table__head" role="row">
-        <span role="columnheader">호출부호</span>
-        <span role="columnheader">유형</span>
-        <span role="columnheader">고도</span>
-        <span role="columnheader">속도</span>
-        <span role="columnheader">최신성</span>
+        {sortColumns.map((column) => {
+          const isMilitaryActive = column.key === 'callsign' && sortKey === 'military';
+          const isActive = sortKey === column.key || isMilitaryActive;
+          const ariaSort = isActive ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+          return (
+            <span key={column.key} role="columnheader" aria-sort={ariaSort}>
+              <button
+                type="button"
+                className={`live-track-th ${sortKey === column.key ? `is-sorted-${sortDir}` : ''}`}
+                onClick={() => handleSort(column.key)}
+              >
+                {column.label}
+                {sortKey === column.key ? <SortCaret direction={sortDir} /> : null}
+              </button>
+              {column.key === 'callsign' ? (
+                <button
+                  type="button"
+                  className={`live-track-th live-track-th--military ${isMilitaryActive ? `is-sorted-${sortDir}` : ''}`}
+                  aria-label="군용 우선 정렬"
+                  onClick={() => handleSort('military')}
+                >
+                  <ShieldAlert size={11} />
+                  {isMilitaryActive ? <SortCaret direction={sortDir} /> : null}
+                </button>
+              ) : null}
+            </span>
+          );
+        })}
       </div>
       <div className="live-track-table__body">
-        {tracks.map((track) => {
+        {sortedTracks.map((track) => {
           const last = track.points.at(-1);
           const active = track.id === selectedTrackId;
           return (

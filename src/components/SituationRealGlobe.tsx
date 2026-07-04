@@ -20,6 +20,8 @@ type SituationRealGlobeProps = {
   airspaceContexts: AirspaceContext[];
   osintEvents: OsintMapEvent[];
   anomalies: Anomaly[];
+  onViewportChange?: (viewport: { bbox: [number, number, number, number]; zoom: number; center: [number, number] }) => void;
+  focusTrack?: { lat: number; lon: number; html: string } | null;
 };
 
 type Coordinate = [number, number];
@@ -588,16 +590,18 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const isLoadedRef = useRef(false);
+  const focusPopupRef = useRef<maplibregl.Popup | null>(null);
   const collections = useMemo(() => overlayCollections(props), [props]);
-  const latestRef = useRef<{ collections: OverlayCollections; region: Region; onRegionSelect?: (regionId: RegionId) => void }>({
+  const latestRef = useRef<{ collections: OverlayCollections; region: Region; onRegionSelect?: (regionId: RegionId) => void; onViewportChange?: SituationRealGlobeProps['onViewportChange'] }>({
     collections,
     region: props.region,
     onRegionSelect: props.onRegionSelect,
+    onViewportChange: props.onViewportChange,
   });
 
   useEffect(() => {
-    latestRef.current = { collections, region: props.region, onRegionSelect: props.onRegionSelect };
-  }, [collections, props.onRegionSelect, props.region]);
+    latestRef.current = { collections, region: props.region, onRegionSelect: props.onRegionSelect, onViewportChange: props.onViewportChange };
+  }, [collections, props.onRegionSelect, props.onViewportChange, props.region]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -633,6 +637,17 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
       const latest = latestRef.current;
       ensureOverlayLayers(map, latest.collections);
       bindPointPopup(map, () => latestRef.current.onRegionSelect);
+      map.on('moveend', () => {
+        const onViewport = latestRef.current.onViewportChange;
+        if (!onViewport) return;
+        const bounds = map.getBounds();
+        const center = map.getCenter();
+        onViewport({
+          bbox: [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+          zoom: map.getZoom(),
+          center: [center.lat, center.lng],
+        });
+      });
       map.flyTo({
         center: [latest.region.center[1], latest.region.center[0]],
         zoom: Math.max(1.1, Math.min(4.2, latest.region.zoom - 4.1)),
@@ -663,6 +678,29 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
       duration: 900,
     });
   }, [collections, props.region.center, props.region.zoom]);
+
+  // Clicking a track flies the globe to it and opens a popup with identity/fusion context.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoadedRef.current) return undefined;
+    if (focusPopupRef.current) {
+      focusPopupRef.current.remove();
+      focusPopupRef.current = null;
+    }
+    const focus = props.focusTrack;
+    if (!focus) return undefined;
+    map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), 8.5), duration: 900, essential: true });
+    focusPopupRef.current = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '340px', className: 'globe-track-popup' })
+      .setLngLat([focus.lon, focus.lat])
+      .setHTML(focus.html)
+      .addTo(map);
+    return () => {
+      if (focusPopupRef.current) {
+        focusPopupRef.current.remove();
+        focusPopupRef.current = null;
+      }
+    };
+  }, [props.focusTrack]);
 
   return (
     <div className="situation-map-shell situation-map-shell--real-globe situation-real-globe-shell" role="img" aria-label={`${props.region.shortName} 실제 지도 3D 지구본`}>

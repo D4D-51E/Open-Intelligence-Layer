@@ -17,9 +17,7 @@
     "db:migrate": "node --env-file=.env scripts/db-migrate.mjs",
     "record": "node --env-file=.env scripts/record-observations.mjs",
     "live:loop": "node scripts/live-data-loop.mjs",
-    "dev:live": "node scripts/dev-live.mjs",
-    "dev:cloudflare": "npm run build && npx wrangler dev --test-scheduled",
-    "deploy:cloudflare": "npm run build && npx wrangler deploy"
+    "dev:live": "node scripts/dev-live.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
