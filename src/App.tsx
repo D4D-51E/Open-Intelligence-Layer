@@ -159,7 +159,9 @@ function buildTrackPopupHtml(track: Track, identity: AircraftIdentity | null, fu
     rows.push(`<div><b>ICAO24</b> ${escapeHtml(identity.icao24 ?? '-')}${identity.registrationCountry ? ` · ${escapeHtml(identity.registrationCountry)}` : ''}</div>`);
   }
   if (last) rows.push(`<div><b>고도/속도</b> ${Math.round(last.altitudeM * 3.28084).toLocaleString()}ft · ${Math.round(last.velocityMs * 1.94384)}kn</div>`);
-  const presentAxes = (fusion?.axes ?? []).filter((axis) => axis.present).slice(0, 3);
+  // Exclude the airspace axis: with a single ROK FIR context it labels every track "INCHEON(RKRR)
+  // 관할" regardless of location (misleading on a global globe), so drop it from the popup.
+  const presentAxes = (fusion?.axes ?? []).filter((axis) => axis.present && axis.kind !== 'airspace').slice(0, 3);
   for (const axis of presentAxes) rows.push(`<div><b>${escapeHtml(axis.label)}</b> ${escapeHtml(axis.detail)}</div>`);
   return `<div class="globe-track-popup__body">
     <div class="globe-track-popup__head">${escapeHtml(track.callsign)}${mil ? '<span class="globe-track-popup__mil">군용</span>' : ''}</div>
