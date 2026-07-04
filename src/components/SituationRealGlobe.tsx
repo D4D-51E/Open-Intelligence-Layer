@@ -720,18 +720,13 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
     };
   }, []);
 
+  // Refresh overlay data on the map without moving the camera — the user drives pan/zoom.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isLoadedRef.current) return;
     ensureOverlayLayers(map, collections);
     updateSources(map, collections);
-    map.easeTo({
-      center: [props.region.center[1], props.region.center[0]],
-      zoom: Math.max(1.1, Math.min(4.2, props.region.zoom - 4.1)),
-      bearing: -8,
-      duration: 900,
-    });
-  }, [collections, props.region.center, props.region.zoom]);
+  }, [collections]);
 
   // Clicking a track flies the globe to it and opens a popup with identity/fusion context.
   useEffect(() => {
