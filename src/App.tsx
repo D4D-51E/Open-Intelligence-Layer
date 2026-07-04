@@ -442,7 +442,7 @@ function App() {
       }),
     },
     osint: scenario.osintEvents.slice(0, 15).map((e) => e.title),
-    telegramClaims: regionalClaims.slice(0, 15).map((c) => ({ place: c.place, verdict: c.verdict, confidence: c.confidence, channel: c.channel })),
+    telegramClaims: regionalClaims.slice(0, 15).map((c) => ({ place: c.place, verdict: c.verdict, confidence: c.confidence, channel: c.channel, evidence: c.evidence })),
     anomalies: anomalies.map((a) => ({ type: a.type, severity: a.severity, title: a.title, description: a.description, tracks: a.relatedTrackIds })),
     notamCount: scenario.notices.length,
   }), [anomalies, regionalClaims, militaryCount, scenario, viewportCountry]);

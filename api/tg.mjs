@@ -13,6 +13,7 @@ import { fetchFirms, bboxAround } from '../db/firms.mjs';
 import { fetchActiveAlerts } from '../db/airAlert.mjs';
 import { fetchAnomalies } from '../db/anomalyAircraft.mjs';
 import { fetchIsraelAlerts } from '../db/israelAlert.mjs';
+import { lookupByName } from '../db/nameLookup.mjs';
 
 export const config = { maxDuration: 60 };
 
@@ -135,33 +136,14 @@ async function buildStatus(sql) {
   return { ac: Number(trk?.ac ?? 0), mil: Number(trk?.mil ?? 0), v: Number(ves?.v ?? 0), osint: Number(osi?.n ?? 0), telegram: Number(tgp?.n ?? 0) };
 }
 
-// Distinctive alphabetic tokens from a query, used to look up a specific vessel/aircraft by name.
-function nameTerms(query) {
-  const stop = new Set(['the', 'and', 'ship', 'vessel', 'about', 'tell', 'show', 'this', 'that', 'info', 'give', 'what', 'where', 'status']);
-  return [...new Set((query.match(/[A-Za-z]{3,}/g) ?? []).map((t) => t.toUpperCase()))]
-    .filter((t) => !stop.has(t.toLowerCase()))
-    .slice(0, 5);
-}
-
 async function buildAiContext(sql, host, query = '') {
   const tracks = await sql`SELECT DISTINCT ON (icao24) callsign, region_id, altitude_m, velocity_ms, is_military, round(lat::numeric,2) AS lat, round(lon::numeric,2) AS lon FROM track_observations WHERE observed_at > now() - interval '15 minutes' AND icao24 IS NOT NULL ORDER BY icao24, observed_at DESC LIMIT 40`;
   const posts = await sql`SELECT channel_label, left(text, 200) AS text FROM telegram_posts ORDER BY observed_at DESC LIMIT 10`;
   const [ves] = await sql`SELECT count(DISTINCT mmsi) AS v FROM vessel_observations WHERE observed_at > now() - interval '15 minutes'`;
 
   // Named lookups so specific-vessel/aircraft questions ("이 선박 알려줘") resolve against the DB
-  // rather than falling back to "no data". Match the query's distinctive tokens by name.
-  const terms = nameTerms(query);
-  let vesselMatches = [];
-  let trackMatches = [];
-  if (terms.length) {
-    const patterns = terms.map((t) => `%${t}%`);
-    // ILIKE ALL = name/callsign must contain every distinctive token → precise (avoids matching a
-    // single common substring across unrelated vessels).
-    [vesselMatches, trackMatches] = await Promise.all([
-      sql`SELECT DISTINCT ON (mmsi) name, mmsi, vessel_type, sog_knots AS sog_kn, cog_deg, round(lat::numeric,3) AS lat, round(lon::numeric,3) AS lon, observed_at FROM vessel_observations WHERE observed_at > now() - interval '24 hours' AND name IS NOT NULL AND name ILIKE ALL(${patterns}) ORDER BY mmsi, observed_at DESC LIMIT 12`,
-      sql`SELECT DISTINCT ON (icao24) callsign, icao24, region_id, altitude_m, velocity_ms, is_military, round(lat::numeric,3) AS lat, round(lon::numeric,3) AS lon, observed_at FROM track_observations WHERE observed_at > now() - interval '24 hours' AND callsign IS NOT NULL AND callsign ILIKE ALL(${patterns}) ORDER BY icao24, observed_at DESC LIMIT 12`,
-    ]);
-  }
+  // rather than falling back to "no data" (shared with the web copilot).
+  const { vesselMatches, trackMatches } = await lookupByName(sql, query);
 
   // Reliability-scored claims (same logic as the web verification panel), trimmed for the prompt.
   const assessed = await gatherClaims(sql, host);
