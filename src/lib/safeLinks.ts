@@ -5,6 +5,7 @@ const ALLOWED_PUBLIC_SOURCE_HOSTS = new Set([
   'open-meteo.com',
   'openskynetwork.github.io',
   'ourairports.com',
+  't.me',
   'www.gdeltproject.org',
 ]);
 
