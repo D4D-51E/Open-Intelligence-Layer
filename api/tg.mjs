@@ -54,6 +54,7 @@ const API = (method) => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_
 
 const SYSTEM = `당신은 공개 데이터(공개 ADS-B 항적, AIS 선박, OSINT/텔레그램, NASA FIRMS 열적) 기반 항공·해상 상황인식 융합 분석관입니다. 제공된 JSON 데이터에만 근거해 한국어로 간결히 답하세요.
 - 항공기/선박/사건/수치를 지어내지 말고, 각 주장 끝에 출처를 [ADS-B][AIS][텔레그램][검증] 등으로 표기.
+- 특정 선박/항공기 질문이면 context.vessels.matches / context.tracks.matches(이름으로 조회한 결과)를 먼저 보고 답하세요. 매치가 있으면 이름·종류·속도·침로·좌표·관측시각으로 설명하고, 비어 있으면 "현재 수집 범위(AIS/ADS-B 커버리지) 내 해당 명칭의 신호 없음"이라고만 하세요(존재 자체를 단정하지 말 것).
 - context.claims 는 텔레그램 주장의 신뢰도 분석 결과입니다: verdict(TRUE 확인 / LIKELY 가능성 / NOT LIKELY 미확인 / FALSE 허위), confidence(0–100), evidence(근거). 신뢰도를 물으면 이 필드를 근거로 답하세요. 확인=≥2개 독립근거(열적·교차출처), 가능성=단일/부분, 미확인=미교차(취재 공백일 수 있음), 허위=강한 주장인데 예상 신호 부재. [검증]
 - 데이터가 희소하면 그렇다고 명시(신호 부재 ≠ 활동 부재). 식별·표적화가 아닌 공개정보 융합 보조. 마크다운 헤더 없이 본문만.`;
 
@@ -114,17 +115,42 @@ async function buildStatus(sql) {
   return { ac: Number(trk?.ac ?? 0), mil: Number(trk?.mil ?? 0), v: Number(ves?.v ?? 0), osint: Number(osi?.n ?? 0), telegram: Number(tgp?.n ?? 0) };
 }
 
-async function buildAiContext(sql, host) {
+// Distinctive alphabetic tokens from a query, used to look up a specific vessel/aircraft by name.
+function nameTerms(query) {
+  const stop = new Set(['the', 'and', 'ship', 'vessel', 'about', 'tell', 'show', 'this', 'that', 'info', 'give', 'what', 'where', 'status']);
+  return [...new Set((query.match(/[A-Za-z]{3,}/g) ?? []).map((t) => t.toUpperCase()))]
+    .filter((t) => !stop.has(t.toLowerCase()))
+    .slice(0, 5);
+}
+
+async function buildAiContext(sql, host, query = '') {
   const tracks = await sql`SELECT DISTINCT ON (icao24) callsign, region_id, altitude_m, velocity_ms, is_military, round(lat::numeric,2) AS lat, round(lon::numeric,2) AS lon FROM track_observations WHERE observed_at > now() - interval '15 minutes' AND icao24 IS NOT NULL ORDER BY icao24, observed_at DESC LIMIT 40`;
   const posts = await sql`SELECT channel_label, left(text, 200) AS text FROM telegram_posts ORDER BY observed_at DESC LIMIT 10`;
   const [ves] = await sql`SELECT count(DISTINCT mmsi) AS v FROM vessel_observations WHERE observed_at > now() - interval '15 minutes'`;
+
+  // Named lookups so specific-vessel/aircraft questions ("이 선박 알려줘") resolve against the DB
+  // rather than falling back to "no data". Match the query's distinctive tokens by name.
+  const terms = nameTerms(query);
+  let vesselMatches = [];
+  let trackMatches = [];
+  if (terms.length) {
+    const patterns = terms.map((t) => `%${t}%`);
+    // ILIKE ALL = name/callsign must contain every distinctive token → precise (avoids matching a
+    // single common substring across unrelated vessels).
+    [vesselMatches, trackMatches] = await Promise.all([
+      sql`SELECT DISTINCT ON (mmsi) name, mmsi, vessel_type, sog_knots AS sog_kn, cog_deg, round(lat::numeric,3) AS lat, round(lon::numeric,3) AS lon, observed_at FROM vessel_observations WHERE observed_at > now() - interval '24 hours' AND name IS NOT NULL AND name ILIKE ALL(${patterns}) ORDER BY mmsi, observed_at DESC LIMIT 12`,
+      sql`SELECT DISTINCT ON (icao24) callsign, icao24, region_id, altitude_m, velocity_ms, is_military, round(lat::numeric,3) AS lat, round(lon::numeric,3) AS lon, observed_at FROM track_observations WHERE observed_at > now() - interval '24 hours' AND callsign IS NOT NULL AND callsign ILIKE ALL(${patterns}) ORDER BY icao24, observed_at DESC LIMIT 12`,
+    ]);
+  }
+
   // Reliability-scored claims (same logic as the web verification panel), trimmed for the prompt.
   const assessed = await gatherClaims(sql, host);
   const claims = assessed.slice(0, 20).map((c) => ({ place: c.place, channel: c.channel, verdict: c.verdict, confidence: c.confidence, evidence: c.evidence, text: c.text.slice(0, 160) }));
   return {
     generatedAt: new Date().toISOString(),
-    tracks: { total: tracks.length, military: tracks.filter((t) => t.is_military).length, sample: tracks },
-    vessels: { count: Number(ves?.v ?? 0) },
+    query,
+    tracks: { total: tracks.length, military: tracks.filter((t) => t.is_military).length, sample: tracks, matches: trackMatches },
+    vessels: { count: Number(ves?.v ?? 0), matches: vesselMatches },
     telegram: posts,
     claims,
   };
@@ -221,7 +247,7 @@ async function handleUpdate(req) {
         return;
       }
       if (cmd === '/ai') {
-        const context = await buildAiContext(sql, req.headers.host);
+        const context = await buildAiContext(sql, req.headers.host, rest);
         const answer = await askOpenAI(rest, context);
         await reply(chatId, answer);
         return;
