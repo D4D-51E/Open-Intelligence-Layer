@@ -13,7 +13,7 @@ type AirAlertResponse = { ok: boolean; active?: AirAlert[] };
 
 export async function fetchAirAlerts(signal?: AbortSignal): Promise<AirAlert[]> {
   try {
-    const res = await fetch('/api/airalert', { signal });
+    const res = await fetch('/api/telegram?kind=airalert', { signal });
     if (!res.ok) return [];
     const payload = await res.json() as AirAlertResponse;
     if (!payload.ok) return [];
