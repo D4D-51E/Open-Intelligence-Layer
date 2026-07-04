@@ -193,7 +193,7 @@ export type SatelliteScene = {
 export type ThermalAnomaly = {
   id: string;
   regionId: RegionId;
-  source: 'nasa-firms-cache';
+  source: 'nasa-firms-cache' | 'nasa-firms-live';
   provider: 'NASA FIRMS';
   lat: number;
   lon: number;

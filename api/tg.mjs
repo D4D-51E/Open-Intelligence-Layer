@@ -8,7 +8,8 @@
 // /start & /help always work (they only echo your chat id + usage); data commands require the
 // caller's chat id to be whitelisted. Public data, non-targeting.
 import { getSql } from '../db/client.mjs';
-import { assessClaims } from '../db/claimAssess.mjs';
+import { assessClaims, geolocate } from '../db/claimAssess.mjs';
+import { fetchFirms, bboxAround } from '../db/firms.mjs';
 
 export const config = { maxDuration: 30 };
 
@@ -46,8 +47,16 @@ async function gatherClaims(sql, host) {
     url: r.url ?? undefined,
     date: r.observed_at instanceof Date ? r.observed_at.toISOString() : String(r.observed_at),
   }));
-  const thermals = await fetchThermals(host);
-  return assessClaims(posts, thermals, Date.now());
+  // Distinct geolocated claim regions → live FIRMS bboxes, so the thermal axis fires over the
+  // ACTUAL claim areas (Middle East / Ukraine), not just the cached AOI regions.
+  const bboxes = [];
+  const seenPlace = new Set();
+  for (const p of posts) {
+    const g = geolocate(p.text);
+    if (g && !seenPlace.has(g.place)) { seenPlace.add(g.place); bboxes.push(bboxAround(g.lat, g.lon)); }
+  }
+  const [cached, live] = await Promise.all([fetchThermals(host), fetchFirms(bboxes, { dayRange: 3 })]);
+  return assessClaims(posts, [...cached, ...live], Date.now());
 }
 
 const API = (method) => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/${method}`;

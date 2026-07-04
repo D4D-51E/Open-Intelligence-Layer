@@ -18,11 +18,11 @@ import { fetchVesselTracks } from './lib/vesselsApi';
 import { vesselTypeLabel } from './lib/display';
 import { fetchOsint, type OsintRow } from './lib/osintApi';
 import { fetchTelegramPosts, type TelegramPost } from './lib/telegramApi';
-import { assessClaims, type AssessedClaim } from './lib/claimVerify';
+import { assessClaims, geolocate, type AssessedClaim } from './lib/claimVerify';
 import { fetchNotam, type NotamRow } from './lib/notamApi';
 import { fetchSeismic, type SeismicEvent } from './lib/seismicApi';
 import { fetchSatelliteModels, propagateSatellites, type SatelliteModel } from './lib/satelliteApi';
-import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, SatellitePass, ShipTrack, Track } from './lib/types';
+import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, SatellitePass, ShipTrack, ThermalAnomaly, Track } from './lib/types';
 
 type AircraftTypeFilter = 'all' | 'military' | Track['platformType'];
 
@@ -239,6 +239,7 @@ function App() {
   const [liveOsint, setLiveOsint] = useState<OsintMapEvent[]>([]);
   const [liveNotam, setLiveNotam] = useState<AirspaceNotice[]>([]);
   const [telegramPosts, setTelegramPosts] = useState<TelegramPost[]>([]);
+  const [liveFirms, setLiveFirms] = useState<ThermalAnomaly[]>([]);
   const [timelineMode, setTimelineMode] = useState(false);
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const [timelineValue, setTimelineValue] = useState(() => Date.now());
@@ -314,10 +315,44 @@ function App() {
     return { ...withFusion, timeline: buildTimelineFromScenario(withFusion) };
   }, [anomalies, displayedHistoryVessels, liveNotam, liveOsint, liveVessels, mergedScenario, showNotam, showOsint, timelineMode]);
 
-  // Reliability scoring: assess Telegram claims against thermal (FIRMS) + cross-source.
+  // Live NASA FIRMS around the actual geolocated claim regions (Middle East / Ukraine), which the
+  // static AOI thermal cache doesn't cover. Fetched server-side (/api/firms) and merged below so
+  // genuine strikes get thermal corroboration and can legitimately score higher than cross-source.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || telegramPosts.length === 0) return undefined;
+    const seen = new Set<string>();
+    const places: string[] = [];
+    for (const post of telegramPosts) {
+      const g = geolocate(post.text);
+      if (!g) continue;
+      const key = `${g.lat.toFixed(1)},${g.lon.toFixed(1)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      places.push(key);
+      if (places.length >= 12) break;
+    }
+    if (places.length === 0) return undefined;
+    let cancelled = false;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch(`/api/firms?places=${encodeURIComponent(places.join(';'))}&days=3`, { signal: controller.signal });
+        if (!res.ok) return;
+        const payload = await res.json() as { ok: boolean; thermals?: Array<{ id: string; lat: number; lon: number; observedAt: string; frpMw?: number; brightnessKelvin?: number; confidence?: number }> };
+        if (cancelled || !payload.ok || !payload.thermals) return;
+        setLiveFirms(payload.thermals.map((t) => ({
+          id: t.id, regionId: 'global' as RegionId, source: 'nasa-firms-live', provider: 'NASA FIRMS',
+          lat: t.lat, lon: t.lon, observedAt: t.observedAt, frpMw: t.frpMw, brightnessKelvin: t.brightnessKelvin, confidence: t.confidence,
+        })));
+      } catch { /* best-effort: reliability falls back to cross-source only */ }
+    })();
+    return () => { cancelled = true; controller.abort(); };
+  }, [telegramPosts]);
+
+  // Reliability scoring: assess Telegram claims against thermal (FIRMS live + cached) + cross-source.
   const assessedClaims = useMemo<AssessedClaim[]>(
-    () => assessClaims(telegramPosts, scenario.thermalAnomalies ?? [], Date.now()),
-    [telegramPosts, scenario.thermalAnomalies],
+    () => assessClaims(telegramPosts, [...(scenario.thermalAnomalies ?? []), ...liveFirms], Date.now()),
+    [telegramPosts, scenario.thermalAnomalies, liveFirms],
   );
 
   // Region view: show only the verification claims inside the current viewport (pan to a
