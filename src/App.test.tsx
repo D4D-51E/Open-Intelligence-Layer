@@ -11,7 +11,7 @@ vi.mock('./components/SituationMap', () => ({
   )
 }));
 
-describe('AirMaven Verify app', () => {
+describe('AirMaven live-track fusion app', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('live cache unavailable in unit test'))));
   });
@@ -20,21 +20,25 @@ describe('AirMaven Verify app', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders the verify pivot with claim queue, verdict, citations, and caveats', async () => {
+  it('renders the live-track fusion pivot without any claim-verification UI', async () => {
     render(<App />);
 
-    expect(screen.getByRole('main', { name: /AirMaven Verify OSINT 검증 상황판/i })).toBeInTheDocument();
+    expect(screen.getByRole('main', { name: /실시간 항적·다중소스 융합 상황판/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /^관심지역$/ })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /^데이터$/ })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: /^화면$/ })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /mocked situation map/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /주장 검증 대기열/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /F-35 격추 주장/i })).toBeInTheDocument();
-    expect(screen.getByText(/False \/ Deceptive/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/공개 ADS-B 부재|무료 공개 위성/).length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { name: /수집 상태/i })).toBeInTheDocument();
-    expect(screen.queryByText(/AirMaven Lite/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: /데모/i })).not.toBeInTheDocument();
+
+    // LiveTrackPanel tabs are the new hero, not a claim queue.
+    expect(screen.getByRole('tab', { name: /항적/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /융합/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /이력/i })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /^군용$/ })).toBeInTheDocument();
+
+    // Claim verification is gone.
+    expect(screen.queryByText(/주장 검증 대기열/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /검증 브리핑/i })).not.toBeInTheDocument();
+
     await waitFor(() => expect(screen.getByText(/스냅샷 사용 불가/i)).toBeInTheDocument());
   });
 
@@ -45,30 +49,18 @@ describe('AirMaven Verify app', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: /^관심지역$/ }), 'west-sea-nll');
 
     expect(screen.getByRole('heading', { name: /^서해\/NLL 인근$/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/서해 폐쇄 주장/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole('tab', { name: /주장 2/i })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/스냅샷 사용 불가/i)).toBeInTheDocument());
   });
 
-  it('can switch back to the narrative scroll report', async () => {
+  it('can switch to the narrative report with the multi-source matrix and safety footer', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.selectOptions(screen.getByRole('combobox', { name: /^화면$/ }), 'narrative');
 
-    expect(screen.getByRole('heading', { name: /검증 소스 연계 매트릭스/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /주장 검증 대기열/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /근거 확인 이력/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /다중소스 연계 매트릭스/i })).toBeInTheDocument();
+    expect(screen.getByText(/식별·표적 지정·타격 권고·자동 교전 판단을 수행하지 않습니다/i)).toBeInTheDocument();
+    expect(screen.queryByText(/주장 검증 대기열/i)).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/스냅샷 사용 불가/i)).toBeInTheDocument());
-  });
-
-  it('lets the analyst select another claim and updates the verification verdict panel', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: /KADIZ 대량 진입/i }));
-
-    expect(screen.getByRole('heading', { name: /KADIZ 대량 진입/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/공식 NOTAM 근거 없음|직접적인 공개 항적 증거 없음/).length).toBeGreaterThan(0);
   });
 });

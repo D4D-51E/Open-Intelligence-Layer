@@ -713,6 +713,9 @@ a:hover { opacity: .78; }
 .aircraft-icon small { background: rgba(13, 14, 11, .84); padding: 3px 6px; border-radius: 7px; border: 1px solid var(--line); }
 .aircraft-icon--watch span { background: var(--warn); }
 .aircraft-icon--warning span { background: var(--danger); color: #fff4ef; }
+.aircraft-glyph { width: 24px; height: 24px; flex: 0 0 auto; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); transform-origin: 50% 50%; }
+.aircraft-icon--military small { border-color: rgba(255,93,71,.5); color: #ffd9d2; }
+.aircraft-icon--military .aircraft-glyph { filter: drop-shadow(0 0 5px rgba(255,93,71,.55)); }
 .satellite-icon span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; background: var(--surface-2); color: var(--accent); border: 1px solid var(--line); }
 .ship-icon,
 .airport-icon,
@@ -3564,4 +3567,312 @@ body {
   .claim-card__topline,
   .evidence-row__topline { display: grid; }
   .verdict-badge { white-space: normal; }
+}
+
+/* Live track panel — 실시간 항적 + 융합 보조 */
+.live-track-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(2, 9, 8, .72);
+}
+
+.ops-dashboard .ops-cell--alerts .live-track-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  border: 0;
+}
+
+.map-grid .live-track-panel {
+  min-height: 520px;
+}
+
+.live-track-tabs {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid rgba(125, 249, 255, .1);
+  background: rgba(0, 0, 0, .18);
+}
+
+.live-track-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 32px;
+  border: 1px solid rgba(125, 249, 255, .14);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .22);
+  color: color-mix(in srgb, var(--muted) 80%, var(--ink));
+  font: 800 11px/1 var(--mono);
+  cursor: pointer;
+}
+
+.live-track-tabs button:hover,
+.live-track-tabs button:focus-visible {
+  border-color: rgba(125, 249, 255, .42);
+  color: var(--hud-cyan);
+  outline: none;
+}
+
+.live-track-tabs button.is-active {
+  border-color: rgba(125, 249, 255, .5);
+  background: rgba(125, 249, 255, .08);
+  color: #f7fff9;
+}
+
+.live-track-tabs button span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(125, 249, 255, .1);
+  color: var(--hud-cyan);
+  font-size: 10px;
+}
+
+.live-track-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.live-track-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+  padding: 10px 12px 12px;
+  overflow-y: auto;
+}
+
+.live-track-pane--history {
+  padding: 0;
+}
+
+.live-track-pane__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.live-track-empty,
+.track-fusion-empty {
+  padding: 14px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.live-track-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.live-track-table__head,
+.live-track-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, .9fr) minmax(0, .8fr) minmax(0, .9fr);
+  gap: 6px;
+  align-items: center;
+}
+
+.live-track-table__head {
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, .3);
+  border-bottom: 1px solid var(--line);
+  font: 800 10px/1 var(--mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.live-track-table__body {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.live-track-row {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(138, 255, 224, .07);
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.live-track-row:hover,
+.live-track-row:focus-visible {
+  background: rgba(125, 249, 255, .06);
+  outline: none;
+}
+
+.live-track-row.is-active {
+  background: var(--accent-soft);
+}
+
+.live-track-row--military {
+  background: rgba(255, 93, 71, .07);
+}
+
+.live-track-row--military.is-active {
+  background: rgba(255, 93, 71, .14);
+}
+
+.live-track-row__callsign {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-track-row--military .live-track-row__callsign svg {
+  color: var(--danger);
+}
+
+.live-track-badge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 93, 71, .18);
+  color: var(--danger);
+  font: 800 9.5px/1.4 var(--mono);
+  font-style: normal;
+}
+
+.pill--military {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-color: rgba(255, 93, 71, .4);
+  color: var(--danger);
+}
+
+.pill--military svg { color: var(--danger); }
+
+.track-fusion-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, .22);
+}
+
+.track-fusion-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.track-fusion-card__head strong {
+  font-size: 13px;
+}
+
+.track-fusion-axes {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.track-fusion-axis {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+}
+
+.track-fusion-axis.is-absent {
+  opacity: .5;
+}
+
+.track-fusion-axis__label {
+  font: 800 10.5px/1.5 var(--mono);
+  color: var(--hud-cyan);
+}
+
+.track-fusion-axis__detail {
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.track-fusion-axis__cite {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+a.track-fusion-axis__cite { color: var(--accent); }
+
+.track-fusion-gaps {
+  margin: 0;
+  color: var(--warn);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.track-fusion-safety {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.aircraft-identity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, .28);
+}
+
+.aircraft-identity-airspace {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aircraft-identity-airspace p {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 178, 56, .08);
+  color: var(--warn);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.aircraft-identity-airspace p.is-hot {
+  background: rgba(255, 93, 71, .12);
+  color: #ffd9d2;
 }

@@ -414,6 +414,7 @@ function normalizeOpenSkyState(state, regionId) {
     source: 'opensky-cache',
     callsign,
     originCountry: originCountry || 'Unknown',
+    icao24: String(icao24 || '').trim().toLowerCase() || undefined,
     platformType: classifyPlatform(callsign, Boolean(onGround)),
     baselineCorridorKm: 25,
     notes: 'Live OpenSky anonymous state vector cache. Public ADS-B coverage is incomplete.',
@@ -1623,6 +1624,26 @@ function recordsFromIcaoPayload(payload) {
   return [payload];
 }
 
+function parseSkylinkDate(raw, fallback) {
+  if (!raw) return fallback;
+  const value = String(raw).trim();
+  if (!value) return fallback;
+  const compactMatch = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(value);
+  if (compactMatch) {
+    const [_, year, month, day, hour, minute, second] = compactMatch;
+    const iso = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
+    if (Number.isFinite(new Date(iso).getTime())) return new Date(iso).toISOString();
+  }
+  const compactDateOnlyMatch = /^(\d{4})(\d{2})(\d{2})$/.exec(value);
+  if (compactDateOnlyMatch) {
+    const [_, year, month, day] = compactDateOnlyMatch;
+    const iso = `${year}-${month}-${day}T00:00:00Z`;
+    if (Number.isFinite(new Date(iso).getTime())) return new Date(iso).toISOString();
+  }
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : fallback;
+}
+
 function parseDateField(record, names, fallback) {
   for (const name of names) {
     const value = record?.[name];
@@ -1726,6 +1747,149 @@ function normalizeIcaoNotice(record, region, index, generatedAt) {
     severity: noticeSeverity(`${title} ${text}`),
     url: record.url ?? record.URL,
   };
+}
+
+function normalizeSkyLinkNotice(record, region, index, generatedAt) {
+  const directLat = directNumber(record, ['lat', 'latitude', 'Latitude', 'LATITUDE']);
+  const directLon = directNumber(record, ['lon', 'lng', 'longitude', 'Longitude', 'LONGITUDE']);
+  const center = directLat != null && directLon != null
+    ? { lat: directLat, lon: directLon }
+    : region.center
+      ? { lat: region.center[0], lon: region.center[1] }
+      : null;
+  if (!center || !pointInRegion(region, center.lat, center.lon, 1.5)) return null;
+  const raw = String(record?.raw ?? record?.message ?? record?.notamText ?? record?.NOTAM_TEXT ?? record?.description ?? '').replace(/\s+/g, ' ').trim();
+  const body = String(record?.body ?? record?.text ?? '').replace(/\s+/g, ' ').trim();
+  const title = String(
+    record?.notam_id
+      ?? record?.notam_id_domestic
+      ?? record?.NOTAM_ID
+      ?? record?.id
+      ?? `SkyLink NOTAM ${index + 1}`,
+  ).replace(/\s+/g, ' ').trim();
+  const scope = String(record?.scope ?? '').toUpperCase();
+  const radiusKm = scope === 'FIR'
+    ? 80
+    : scope === 'AERODROME'
+      ? 30
+      : 45;
+  const effectiveFrom = parseSkylinkDate(record?.effective ?? record?.startTime ?? record?.effectiveStart, generatedAt);
+  const effectiveTo = parseSkylinkDate(record?.expiration ?? record?.endTime ?? record?.effectiveEnd, generatedAt);
+  return {
+    id: `skylink-notam-${region.id}-${String(record?.notam_id ?? record?.notam_id_domestic ?? record?.id ?? index + 1).replace(/[^a-zA-Z0-9_-]/g, '-')}`,
+    regionId: region.id,
+    source: 'skylink-notam-cache',
+    title: title.slice(0, 140),
+    description: (body || raw || title).slice(0, 320),
+    publishedAt: parseDateField(record, ['publishedAt', 'issued', 'created', 'createdAt', 'effective'], generatedAt),
+    effectiveFrom: effectiveFrom ?? parseDateField(record, ['effective_from', 'effectiveStart', 'startTime'], generatedAt),
+    effectiveTo: effectiveTo ?? parseDateField(record, ['effective_end', 'effectiveTo', 'expiration'], generatedAt),
+    lat: center.lat,
+    lon: center.lon,
+    radiusKm,
+    severity: noticeSeverity(`${title} ${raw} ${body}`),
+    url: record?.url ?? record?.url?.toString?.(),
+  };
+}
+
+function isSkyLinkNotamEnabled() {
+  if (!boolFromEnv('SKYLINK_NOTAM_FETCH_ENABLED', true)) return false;
+  if (!process.env.SKYLINK_NOTAM_API_KEY) return false;
+  if (!process.env.SKYLINK_NOTAM_API_HOST) return false;
+  return true;
+}
+
+function isIcaoNotamEnabled() {
+  if (!boolFromEnv('ICAO_NOTAM_FETCH_ENABLED', true)) return false;
+  return Boolean(process.env.ICAO_API_KEY && process.env.ICAO_NOTAM_ENDPOINT);
+}
+
+function skylinkNotamBaseUrl() {
+  return (process.env.SKYLINK_NOTAM_BASE_URL ?? 'https://skylink-api.p.rapidapi.com').replace(/\/+$/, '');
+}
+
+function parseSkyLinkNotamPayload(payload) {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.notams)) return payload.notams;
+  return [];
+}
+
+async function fetchSkyLinkNotams(region, generatedAt) {
+  if (!boolFromEnv('SKYLINK_NOTAM_FETCH_ENABLED', true)) {
+    return { notices: [], status: 'disabled', reason: 'SKYLINK_NOTAM_FETCH_ENABLED=false', warnings: [] };
+  }
+  if (!process.env.SKYLINK_NOTAM_API_KEY) {
+    return { notices: [], status: 'disabled', reason: 'SKYLINK_NOTAM_API_KEY 미설정', warnings: [] };
+  }
+  if (!process.env.SKYLINK_NOTAM_API_HOST) {
+    return { notices: [], status: 'disabled', reason: 'SKYLINK_NOTAM_API_HOST 미설정', warnings: [] };
+  }
+  const maxLocations = parsePositiveInteger(process.env.SKYLINK_NOTAM_MAX_LOCATIONS_PER_REGION, 2);
+  const maxNotices = parsePositiveInteger(process.env.SKYLINK_NOTAM_MAX_PER_REGION, 8);
+  const locations = region.notamLocations.slice(0, Math.max(1, maxLocations));
+  const headers = {
+    'x-rapidapi-key': process.env.SKYLINK_NOTAM_API_KEY,
+    'x-rapidapi-host': process.env.SKYLINK_NOTAM_API_HOST,
+  };
+
+  const warnings = [];
+  const notices = [];
+
+  for (const location of locations) {
+    if (notices.length >= maxNotices) break;
+    const locationCode = String(location ?? '').trim().toUpperCase();
+    if (!locationCode) continue;
+    try {
+      const url = `${skylinkNotamBaseUrl()}/notams/${encodeURIComponent(locationCode)}`;
+      const text = await fetchText(url, { timeoutMs: 30000, headers });
+      const payload = parseMaybeJsonOrCsv(text);
+      const records = parseSkyLinkNotamPayload(payload);
+      for (const [index, record] of records.entries()) {
+        const notice = normalizeSkyLinkNotice(record, region, notices.length + index, generatedAt);
+        if (notice) notices.push(notice);
+        if (notices.length >= maxNotices) break;
+      }
+    } catch (error) {
+      warnings.push(`SkyLink NOTAM ${region.id}: ${shortError(error)}`);
+    }
+  }
+
+  const deduped = [...new Map(notices.map((notice) => [notice.id, notice])).values()].slice(0, maxNotices);
+  if (deduped.length === 0 && warnings.length === 0) {
+    warnings.push(`SkyLink NOTAM ${region.id}: no active notices returned`);
+  }
+  return {
+    notices: deduped,
+    status: deduped.length > 0 ? 'live' : warnings.length === locations.length ? 'unavailable' : 'empty',
+    reason: deduped.length > 0 ? undefined : warnings.at(0) ?? '활성 NOTAM 0건',
+    warnings,
+  };
+}
+
+async function fetchNotams(region, generatedAt) {
+  if (isSkyLinkNotamEnabled()) {
+    const skylink = await fetchSkyLinkNotams(region, generatedAt);
+    const shouldFallbackToIcao = isIcaoNotamEnabled() && (skylink.status !== 'live' || skylink.notices.length === 0);
+    if (shouldFallbackToIcao) {
+      if (isIcaoNotamEnabled()) {
+        const icao = await fetchIcaoNotams(region, generatedAt);
+        if (icao.notices.length > 0) return icao;
+        return icao.notices.length === 0
+          ? {
+            notices: icao.notices,
+            status: icao.status === 'unavailable' ? skylink.status : icao.status,
+            reason: `${skylink.reason ?? 'SkyLink 수집 결과 없음'}; ${icao.reason ?? 'ICAO 수집 결과 없음'}`,
+            warnings: [...skylink.warnings, ...icao.warnings],
+          }
+          : icao;
+      }
+    } else {
+      return skylink;
+    }
+    return skylink;
+  }
+  return fetchIcaoNotams(region, generatedAt);
 }
 
 async function fetchIcaoNotams(region, generatedAt) {
@@ -1847,10 +2011,10 @@ async function main() {
         : fetchIcaoFirWithCache(region, previousCache, generatedAt),
       region.global
         ? Promise.resolve({ ok: true, value: standbyNoticeLayer() })
-        : safeStep(`ICAO NOTAM ${region.id}`, () => fetchIcaoNotams(region, generatedAt), {
+        : safeStep(`NOTAM ${region.id}`, () => fetchNotams(region, generatedAt), {
           notices: [],
           status: 'unavailable',
-          reason: 'ICAO NOTAM 수집 실패',
+          reason: 'NOTAM 수집 실패',
           warnings: [],
         }),
     ]);

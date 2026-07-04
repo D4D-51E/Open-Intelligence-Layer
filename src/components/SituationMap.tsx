@@ -16,12 +16,16 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#39;');
 }
 
-const aircraftIcon = (callsign: string, severity: 'normal' | 'watch' | 'warning') => L.divIcon({
-  className: `aircraft-icon aircraft-icon--${severity}`,
-  html: `<span>✈</span><small>${escapeHtml(callsign)}</small>`,
-  iconSize: [72, 32],
-  iconAnchor: [36, 16],
-});
+const aircraftIcon = (callsign: string, severity: 'normal' | 'watch' | 'warning', headingDeg = 0, isMilitary = false) => {
+  const color = isMilitary || severity === 'warning' ? '#ff5d47' : severity === 'watch' ? '#ffb238' : '#7df9ff';
+  const plane = `<svg class="aircraft-glyph" width="24" height="24" viewBox="0 0 24 24" style="transform:rotate(${Math.round(headingDeg)}deg)" aria-hidden="true"><path d="M12 2 L12.9 9.6 L22 13.6 L12.9 13.6 L12.7 18.8 L15.6 21.4 L12 19.7 L8.4 21.4 L11.3 18.8 L11.1 13.6 L2 13.6 L11.1 9.6 Z" fill="${color}" stroke="#020403" stroke-width="0.7"/></svg>`;
+  return L.divIcon({
+    className: `aircraft-icon aircraft-icon--${severity}${isMilitary ? ' aircraft-icon--military' : ''}`,
+    html: `${plane}<small>${escapeHtml(callsign)}</small>`,
+    iconSize: [72, 42],
+    iconAnchor: [36, 21],
+  });
+};
 
 const satIcon = L.divIcon({
   className: 'satellite-icon',
@@ -327,11 +331,12 @@ export function SituationMap({
               {track.points.map((point, index) => (
                 <CircleMarker key={`${track.id}-${point.observedAt}`} center={[point.lat, point.lon]} radius={index === track.points.length - 1 ? 5 : 3} pathOptions={{ color: '#0f172a', fillColor: '#e0f2fe', fillOpacity: 0.96, weight: 1 }} />
               ))}
-              <Marker position={[last.lat, last.lon]} icon={aircraftIcon(track.callsign, severity)}>
+              <Marker position={[last.lat, last.lon]} icon={aircraftIcon(track.callsign, severity, last.headingDeg, track.isMilitary)}>
                 <Popup>
-                  <strong>{track.callsign}</strong>
-                  <p>{platformTypeLabel(track.platformType)} · {track.source}</p>
+                  <strong>{track.callsign}{track.isMilitary ? ' · 군용(ADS-B)' : ''}</strong>
+                  <p>{platformTypeLabel(track.platformType)} · {track.source}{track.typeCode ? ` · ${track.typeCode}` : ''}</p>
                   <p>고도 {last.altitudeM.toLocaleString()}m · 속도 {last.velocityMs}m/s · 방위 {last.headingDeg}°</p>
+                  {(track.icao24 || track.registration) && <p>{track.icao24 ? `ICAO24 ${track.icao24}` : ''}{track.icao24 && track.registration ? ' · ' : ''}{track.registration ? `등록 ${track.registration}` : ''}</p>}
                   <small>{track.notes ?? '공개/캐시 상태 벡터입니다.'}</small>
                 </Popup>
               </Marker>

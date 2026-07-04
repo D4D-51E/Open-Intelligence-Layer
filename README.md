@@ -1,34 +1,63 @@
-# AirMaven Verify
+# AirMaven
 
-D4D T2 **Air/Space OSINT Claim Verification Copilot** hackathon prototype.
+D4D T2 **Real-time Air/Space Track & Multi-source Fusion** hackathon prototype.
 
-AirMaven Verify pivots the original Maven-style ISR dashboard into a claim-centric verification system: it tracks wartime air/space claims, links public evidence, separates support/contradiction/context/gaps, and renders a conservative verdict for analyst review.
+AirMaven exposes live public ADS-B air tracks and fuses them with orbital, weather, and OSINT context on the same AOI. It surfaces real-time tracks (with public military-flag emphasis), builds a per-track fusion context (weather / satellite pass / FIR-airspace / OSINT / anomaly), and an AOI-level fusion summary for analyst review.
 
-> Safety boundary: this is **analyst decision-support only**. It does not perform target designation, strike recommendation, weapon selection, or automated engagement logic.
+> Safety boundary: this is **analyst decision-support only**. The military marker is public ADS-B flag exposure, not identification. It does not perform target designation, strike recommendation, weapon selection, or automated engagement logic.
 
 ## Features
 
-- Default **Ops 4-up · verify mode** dashboard:
+- Default **Ops 4-up dashboard**:
   - preserved dark HUD style and Leaflet situation map/globe-oriented operating picture
-  - claim verification queue
-  - active verdict and evidence matrix
-  - source health / caveat panel
-  - evidence timeline and terminal-style ingest log
-- Optional **Narrative · scroll report** mode for a shareable verification brief and source matrix.
-- Claim-centric data model:
-  - `claim`, `evidence`, `verdict`, `contradiction`, `gap`
-  - verdict labels: `Confirmed`, `Likely True`, `Plausible but Unverified`, `Inconclusive`, `Likely False`, `False`
-  - evidence stances: supports / contradicts / context / gap
-- Seeded demo claims:
-  - Iran / U.S. F-35 shootdown false-claim scenario
-  - KADIZ mass-entry claim
-  - South China Sea base-strike claim
-  - Taiwan Strait sortie-spike claim
-  - West Sea / NLL airspace-closure claim
+  - **live track panel** (hero): real-time ADS-B track table with public military-flag emphasis, altitude/speed/type filters, and per-track fusion context on selection
+  - AOI-level **fusion summary** (read-only) and **event timeline** tabs
+  - terminal-style ingest log for browser cache polling
+- Optional **Narrative · scroll report** mode with the live track panel plus the multi-source integration matrix.
+- Track + fusion data model:
+  - `Track` (with `isMilitary` public ADS-B flag), `SatellitePass`, `WeatherSnapshot`, `AirspaceContext`, `OsintItem`/`OsintMapEvent`, `Anomaly`
+  - per-track fusion axes: weather / satellite / airspace(FIR+NOTAM) / OSINT / anomaly
+  - AOI fusion events with `confidenceFactors` (source reliability / freshness / cross-source agreement / missing-data penalty)
 - AOI preset selector: Global, 대만해협, 수도권 상공, 남중국해, 서해/NLL 인근.
+
+### Real-time track exposure (`airplanesLiveApi.ts`)
+
+- Browser polls **Airplanes.live** `/point/{lat}/{lon}/{radius}` and **adsb.lol** (`/v2/lat/{lat}/lon/{lon}/dist/{nm}` regional feed **plus the `/v2/mil` global military-only feed intersected with the AOI**) per AOI, and merges them with the server-side **OpenSky** cache. Records are **deduped across all three ADS-B sources by ICAO24 hex** (richest history wins, military flag preserved). The shared readsb-JSON normalizer lives in `adsbCommon.ts`; both `airplanesLiveApi.ts` and `adsbLolApi.ts` build on it. adsb.lol is free and needs no key. **adsb.lol sends no CORS header**, so the browser cannot call it directly — it is proxied **same-origin** through `/adsb-lol/*` (Vite dev/preview `server.proxy` + a Vercel `rewrites` rule), which is why `adsbLolApi.ts` uses the base path `/adsb-lol/v2`. (Airplanes.live sends `access-control-allow-origin: *`, so it is called directly.)
+- Public military aircraft (`dbFlags & 1`) are preserved as `Track.isMilitary` and emphasized in the metric badge, the track table row, and the `군용` type filter.
+- Military marking is **public ADS-B flag exposure only** — not identification, not target designation.
+- Tracks render as **heading-rotated airplane icons** on both the default MapLibre globe (`SituationRealGlobe`, SDF symbol layer with `icon-rotate`) and the Leaflet map (`SituationMap`, rotated SVG); military tracks are tinted red.
+
+### Aircraft identification (`aircraftIdentity.ts`, heuristic)
+
+Selecting a track builds a read-only **identity card** from public data only. Every field is a naming-convention/allocation heuristic, never an authoritative lookup:
+
+- **Operator resolution (data-driven)** — the ICAO 3-letter callsign prefix (e.g. `RCH431`→`RCH`) is looked up in a **community operator dataset** (Mictronics readsb, ~5,500 operators) fetched by `scripts/fetch-callsign-db.mjs` into `public/data/aircraft-operators.json`. The military flag is derived from the operator name at ingest time (keyword classifier), not hand-authored per callsign. Registrations and dynamic tactical callsigns (e.g. `DRAGON`) that are not registered operator prefixes resolve to no operator rather than a guessed mapping — `militaryLikely` still comes from `dbFlags`/ICAO24 mil-block. A small built-in prefix table is kept only as an offline fallback.
+- **ICAO24 → registration country** — 24-bit address allocation-block table (offline), with a US/allied military sub-block hint.
+- **Operator candidates** — combined from callsign, ICAO24 block, and the `dbFlags` military flag.
+- **Type candidate** — from the ADS-B-broadcast type code (`t`) via a small ICAO-designator map; unknown codes fall back to the raw code.
+- **Session observation history** — first-seen time, point count, and duration accumulated in this session (not a cross-day archive).
+
+### Active airspace matching (`noticeAirspace.ts`, NOTAM-based)
+
+`matchActiveAirspace(point, notices, at)` classifies SkyLink/ICAO NOTAMs into airspace kinds (MOA / TRA / Danger / Restricted / Prohibited / TSA / CTR) and parses flight-level bands, then flags when a selected track is inside an **active** NOTAM's radius (and whether its altitude falls in the band). This covers NOTAM-announced *active* airspace; standing charted special-use-airspace polygons would need a separate dataset (OpenAIP/FAA SUA) and are out of scope.
+
+### Per-track fusion context (`trackFusion.ts`)
+
+`buildTrackFusionContext(track, scenario, anomalies)` combines only real public data on the selected track's latest position/time. Empty axes are reported as gaps, never synthesized:
+
+1. **기상**: region Open-Meteo snapshot (cloud / visibility / gust) with an observability note.
+2. **위성**: nearest CelesTrak pass within distance + time window, plus any Copernicus scene bbox covering the track.
+3. **공역**: nearest/containing FIR (ICAO) plus NOTAM notices within radius.
+4. **OSINT**: GDELT/Google-News events within range and items inside the time window.
+5. **이상**: anomalies (`anomaly.ts`) whose `relatedTrackIds` include the track.
+
+### AOI fusion summary (`fusion.ts`)
+
+`buildFusionEvents(scenario, anomalies)` produces read-only AOI cards (overview / review-cue / data-quality) that combine tracks, ships, weather, OSINT, satellites, and FIR on the same AOI, each with citations and confidence factors. Data gaps stay visible as source-status citations instead of synthetic events.
+
 - Data mode is fixed to `API 스냅샷`: `public/data/live-scenarios.json`.
 - Live/cache OSINT integrations:
-  - GDELT + Google News RSS for claim/news discovery
+  - GDELT + Google News RSS for news/OSINT discovery
   - OpenSky for public ADS-B state vectors
   - CelesTrak + satellite.js for public orbital pass context
   - Copernicus Data Space STAC for public satellite scene metadata
@@ -36,7 +65,7 @@ AirMaven Verify pivots the original Maven-style ISR dashboard into a claim-centr
   - Open-Meteo for weather/visibility/cloud context
   - OurAirports, ICAO FIR/NOTAM, AISStream for supporting airspace/maritime context
 - Missing, disabled, rate-limited, or unsupported sources are shown as evidence gaps; the app does not fabricate placeholder intelligence.
-- Deterministic briefing/verdict logic with citations and caveats.
+- Deterministic briefing/fusion logic with citations and caveats.
 
 ## Setup
 
@@ -96,7 +125,7 @@ Current live-cache sources:
 | Airport context | OurAirports CSV | Public airport markers and derived airport-axis route context |
 | FIR context | ICAO API Data Service `fir-by-location` | AOI center FIR lookup, 24h TTL cache by default |
 | AIS maritime | AISStream WebSocket `wss://stream.aisstream.io/v0/stream` | Server-side live collection; 수신 0건이면 상태 사유 표시, 직전 캐시가 신선하면 유지 |
-| NOTAM notices | ICAO API Data Service endpoint from account portal | Calls `ICAO_NOTAM_ENDPOINT` when configured; empty if endpoint is missing or response has no geocoded NOTAM records |
+| NOTAM notices | SkyLink NOTAM API (기본) / ICAO NOTAM fallback | SkyLink `/notams/{icao}` 우선 시도, 실패 시 ICAO endpoint fallback |
 
 Optional OpenSky OAuth2 credentials can be added to `.env` for better rate limits:
 
@@ -162,7 +191,19 @@ ICAO_NOTAM_MAX_LOCATIONS_PER_REGION=2
 ICAO_NOTAM_MAX_PER_REGION=8
 ```
 
-`ICAO_API_KEY` is enough for `fir-by-location` because the endpoint is visible in the account table. It is not enough for NOTAM in the current account table: the listed services do not include Realtime/Stored NOTAMS. If your ICAO portal later exposes a NOTAM endpoint, set `ICAO_NOTAM_ENDPOINT` from the portal. Endpoint templates may include `{location}`, `{icao}`, `{regionId}`, `{minLat}`, `{minLon}`, `{maxLat}`, `{maxLon}`, and `{apiKey}`.
+Optional SkyLink NOTAM credentials (default primary provider for `notices`):
+
+```bash
+SKYLINK_NOTAM_FETCH_ENABLED=true
+SKYLINK_NOTAM_API_KEY=
+SKYLINK_NOTAM_API_HOST=skylink-api.p.rapidapi.com
+SKYLINK_NOTAM_MAX_LOCATIONS_PER_REGION=2
+SKYLINK_NOTAM_MAX_PER_REGION=8
+```
+
+
+`ICAO_API_KEY` is enough for `fir-by-location` because the endpoint is visible in the account table. If your ICAO portal exposes a NOTAM endpoint, set `ICAO_NOTAM_ENDPOINT` from the portal. Endpoint templates may include `{location}`, `{icao}`, `{regionId}`, `{minLat}`, `{minLon}`, `{maxLat}`, `{maxLon}`, and `{apiKey}`.
+NOTAM 데이터 수집은 기본적으로 SkyLink API(`/notams/{icao}` + RapidAPI 헤더)를 우선 사용하고, 설정되어 있지 않으면 ICAO `ICAO_NOTAM_ENDPOINT` 경로로 fallback 됩니다.
 
 Do not treat the live cache as authoritative intelligence. It is public, incomplete, rate-limited, and intended for analyst-support review only.
 
@@ -340,6 +381,6 @@ React UI: Ops 4-up dashboard or narrative report view
 - CelesTrak may block or rate-limit repeated downloads; when that happens, the satellite layer is empty.
 - AISStream coverage depends on public AIS receivers and the short fetch window; sparse maritime AOIs may legitimately show zero ships.
 - ICAO FIR lookup uses a 24h TTL by default because trial keys have limited calls.
-- ICAO NOTAM requires the account-specific endpoint configuration; the current endpoint list supplied for this key does not include NOTAM.
+- NOTAM은 기본 SkyLink 우선 수집, 미설정 시 ICAO 계정의 `ICAO_NOTAM_ENDPOINT`로 보완 조회합니다. 설정되지 않으면 항목이 비게 표시됩니다.
 - OSINT/news correlation is not confirmation.
 - The satellite layer is public orbital awareness, not a claim of ISR collection capability.

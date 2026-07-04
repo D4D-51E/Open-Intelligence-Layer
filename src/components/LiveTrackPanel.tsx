@@ -1,0 +1,315 @@
+import { Clock, ExternalLink, Layers, Plane, Radio, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import type { Citation, FusionEvent, TimelineEvent, Track } from '../lib/types';
+import type { TrackFusionAxis, TrackFusionContext } from '../lib/trackFusion';
+import type { AircraftIdentity } from '../lib/aircraftIdentity';
+import type { AirspaceKind, AirspaceMatch } from '../lib/noticeAirspace';
+import { safeExternalUrl } from '../lib/safeLinks';
+import { Timeline } from './Timeline';
+
+type LiveTrackTab = 'tracks' | 'fusion' | 'history';
+
+type LiveTrackPanelProps = {
+  regionName: string;
+  tracks: Track[];
+  selectedTrackId?: string;
+  onSelectTrack: (trackId: string) => void;
+  fusionContext: TrackFusionContext | null;
+  fusionEvents: FusionEvent[];
+  timeline: TimelineEvent[];
+  militaryCount: number;
+  identity: AircraftIdentity | null;
+  activeAirspace: AirspaceMatch[];
+};
+
+const airspaceKindLabels: Record<AirspaceKind, string> = {
+  MOA: 'MOA(군작전구역)',
+  TRA: 'TRA(임시예약공역)',
+  DANGER: '위험구역(Danger)',
+  RESTRICTED: '제한구역(Restricted)',
+  PROHIBITED: '금지구역(Prohibited)',
+  TSA: 'TSA(임시분리공역)',
+  CTR: '관제권(CTR)',
+  GENERIC: '공역 공지',
+};
+
+function observationSummary(track: Track): string {
+  const points = track.points;
+  if (!points.length) return '세션 관측 데이터 없음';
+  const firstAt = points[0].observedAt;
+  const lastAt = points[points.length - 1].observedAt;
+  const spanMin = Math.max(0, Math.round((Date.parse(lastAt) - Date.parse(firstAt)) / 60_000));
+  const firstMs = Date.parse(firstAt);
+  const firstLabel = Number.isNaN(firstMs)
+    ? ''
+    : ` · 첫 관측 ${new Date(firstMs).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+  return `세션 관측 ${points.length}점 · ${spanMin}분${firstLabel}`;
+}
+
+function IdRow({ label, value }: { label: string; value: string }) {
+  return (
+    <li className="track-fusion-axis">
+      <span className="track-fusion-axis__label">{label}</span>
+      <span className="track-fusion-axis__detail">{value}</span>
+    </li>
+  );
+}
+
+function AircraftIdentityCard({ identity, track, activeAirspace }: { identity: AircraftIdentity | null; track?: Track; activeAirspace: AirspaceMatch[] }) {
+  if (!identity) return null;
+  const icaoLine = [
+    identity.icao24 ? `ICAO24 ${identity.icao24}` : null,
+    identity.registrationCountry ? `등록국 ${identity.registrationCountry}` : null,
+  ].filter(Boolean).join(' · ');
+  return (
+    <article className="aircraft-identity-card" aria-label={`${identity.callsign} 식별`}>
+      <div className="track-fusion-card__head">
+        <strong>{identity.callsign} 식별</strong>
+        {identity.militaryLikely
+          ? <span className="pill pill--military"><ShieldAlert size={12} /> 군용 추정</span>
+          : <span className="pill">민간 추정</span>}
+      </div>
+      <ul className="track-fusion-axes">
+        {identity.callsignProgram ? <IdRow label="콜사인" value={identity.callsignProgram} /> : null}
+        {icaoLine ? <IdRow label="ICAO24" value={icaoLine} /> : null}
+        {identity.operatorCandidates.length > 0 ? <IdRow label="운영자" value={`${identity.operatorCandidates.join(' · ')} (추정)`} /> : null}
+        {identity.typeCandidate ? <IdRow label="기종" value={identity.typeCandidate} /> : null}
+        {identity.registration ? <IdRow label="등록" value={identity.registration} /> : null}
+        {track ? <IdRow label="관측" value={observationSummary(track)} /> : null}
+      </ul>
+      {activeAirspace.length > 0 ? (
+        <div className="aircraft-identity-airspace">
+          {activeAirspace.map((match) => {
+            const fl = match.airspace.flMin != null || match.airspace.flMax != null
+              ? ` · FL${match.airspace.flMin ?? '?'}–${match.airspace.flMax ?? '?'}${match.withinAltBand ? ' · 고도대 걸림' : ''}`
+              : '';
+            return (
+              <p key={match.notice.id} className={match.withinAltBand ? 'is-hot' : ''}>
+                활성 공역: {airspaceKindLabels[match.airspace.kind]} · 반경 내{fl} · {match.notice.title}
+              </p>
+            );
+          })}
+        </div>
+      ) : null}
+      {identity.notes.length > 0 ? <small className="track-fusion-safety">{identity.notes.join(' · ')}</small> : null}
+    </article>
+  );
+}
+
+const platformLabels: Record<Track['platformType'], string> = {
+  commercial: '민항',
+  cargo: '화물',
+  unknown: '미식별',
+};
+
+const axisLabels: Record<TrackFusionAxis['kind'], string> = {
+  weather: '기상',
+  satellite: '위성',
+  airspace: '공역',
+  osint: 'OSINT',
+  anomaly: '이상',
+};
+
+function percent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function freshnessLabel(observedAt?: string) {
+  if (!observedAt) return '시각 미상';
+  const observedMs = Date.parse(observedAt);
+  if (Number.isNaN(observedMs)) return '시각 미상';
+  const minutes = Math.max(0, Math.round((Date.now() - observedMs) / 60_000));
+  if (minutes < 90) return `${minutes}분 전`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 36) return `${hours}시간 전`;
+  return `${Math.round(hours / 24)}일 전`;
+}
+
+function CitationLink({ citation, showLabel, className, iconSize = 11 }: { citation: Citation; showLabel: boolean; className?: string; iconSize?: number }) {
+  const safeUrl = safeExternalUrl(citation.url);
+  const text = `${showLabel ? `${citation.label} · ` : ''}${citation.source} · ${freshnessLabel(citation.observedAt)}`;
+  return safeUrl
+    ? <a className={className} href={safeUrl} target="_blank" rel="noreferrer">{text} <ExternalLink size={iconSize} /></a>
+    : <small className={className}>{text}</small>;
+}
+
+function TrackTable({ tracks, selectedTrackId, onSelectTrack }: Pick<LiveTrackPanelProps, 'tracks' | 'selectedTrackId' | 'onSelectTrack'>) {
+  if (tracks.length === 0) {
+    return <p className="live-track-empty">현재 선택 AOI에 노출된 실시간 항적이 없습니다. 합성 항적은 만들지 않습니다.</p>;
+  }
+  return (
+    <div className="live-track-table" role="table" aria-label="실시간 항적 목록">
+      <div className="live-track-table__head" role="row">
+        <span role="columnheader">호출부호</span>
+        <span role="columnheader">유형</span>
+        <span role="columnheader">고도</span>
+        <span role="columnheader">속도</span>
+        <span role="columnheader">최신성</span>
+      </div>
+      <div className="live-track-table__body">
+        {tracks.map((track) => {
+          const last = track.points.at(-1);
+          const active = track.id === selectedTrackId;
+          return (
+            <button
+              key={track.id}
+              type="button"
+              role="row"
+              className={`live-track-row ${track.isMilitary ? 'live-track-row--military' : ''} ${active ? 'is-active' : ''}`}
+              aria-pressed={active}
+              onClick={() => onSelectTrack(track.id)}
+            >
+              <span className="live-track-row__callsign" role="cell">
+                {track.isMilitary ? <ShieldAlert size={13} aria-label="군용 ADS-B" /> : <Plane size={13} />}
+                {track.callsign}
+              </span>
+              <span role="cell">
+                {platformLabels[track.platformType]}
+                {track.isMilitary ? <em className="live-track-badge">군용</em> : null}
+              </span>
+              <span role="cell">{last ? `${last.altitudeM.toLocaleString('ko-KR')}m` : '-'}</span>
+              <span role="cell">{last ? `${last.velocityMs}m/s` : '-'}</span>
+              <span role="cell">{freshnessLabel(last?.observedAt)}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TrackFusionCard({ context }: { context: TrackFusionContext | null }) {
+  if (!context) {
+    return <p className="track-fusion-empty">항적을 선택하면 궤도·기상·공역·OSINT 융합 컨텍스트를 표시합니다.</p>;
+  }
+  return (
+    <article className="track-fusion-card" aria-label={`${context.callsign} 융합 컨텍스트`}>
+      <div className="track-fusion-card__head">
+        <strong>{context.callsign} 융합 컨텍스트</strong>
+        <span className="pill">축 {context.axes.filter((axis) => axis.present).length}/{context.axes.length}</span>
+      </div>
+      <ul className="track-fusion-axes">
+        {context.axes.map((axis) => (
+          <li key={axis.kind} className={`track-fusion-axis ${axis.present ? '' : 'is-absent'}`}>
+            <span className="track-fusion-axis__label">{axisLabels[axis.kind]}</span>
+            <span className="track-fusion-axis__detail">{axis.detail}</span>
+            {axis.citation ? <CitationLink citation={axis.citation} showLabel={false} className="track-fusion-axis__cite" iconSize={10} /> : null}
+          </li>
+        ))}
+      </ul>
+      {context.gaps.length > 0 ? (
+        <p className="track-fusion-gaps">데이터 공백: {context.gaps.join(' · ')}</p>
+      ) : null}
+      <small className="track-fusion-safety">공개 ADS-B/공개 소스 노출·융합 보조입니다. 식별·표적화·교전 판단이 아닙니다.</small>
+    </article>
+  );
+}
+
+function FusionSummaryList({ fusionEvents }: { fusionEvents: FusionEvent[] }) {
+  if (fusionEvents.length === 0) {
+    return <p className="fusion-event-empty">현재 선택 지역에 융합할 실제 공개 데이터가 없습니다. 합성 이벤트는 만들지 않습니다.</p>;
+  }
+  return (
+    <div className="fusion-event-list">
+      {fusionEvents.map((fusionEvent) => (
+        <article key={fusionEvent.id} className={`fusion-event fusion-event--${fusionEvent.severity}`}>
+          <div className="fusion-event__topline">
+            <strong>{fusionEvent.title}</strong>
+            <span>신뢰도 {percent(fusionEvent.confidence)}</span>
+          </div>
+          <p>{fusionEvent.summary}</p>
+          <div className="fusion-event__citations">
+            {fusionEvent.citations.slice(0, 4).map((citation) => (
+              <CitationLink key={citation.id} citation={citation} showLabel />
+            ))}
+          </div>
+          <small className="fusion-event__safety">{fusionEvent.safetyNote}</small>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export function LiveTrackPanel({
+  regionName,
+  tracks,
+  selectedTrackId,
+  onSelectTrack,
+  fusionContext,
+  fusionEvents,
+  timeline,
+  militaryCount,
+  identity,
+  activeAirspace,
+}: LiveTrackPanelProps) {
+  const [tab, setTab] = useState<LiveTrackTab>('tracks');
+  const selectedTrack = tracks.find((track) => track.id === selectedTrackId);
+  return (
+    <section className="panel live-track-panel" aria-label="실시간 항적, 지역 융합 요약, 이벤트 이력">
+      <div className="live-track-tabs" role="tablist" aria-label="항적 분석 패널">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'tracks'}
+          className={tab === 'tracks' ? 'is-active' : ''}
+          onClick={() => setTab('tracks')}
+        >
+          <Radio size={13} /> 항적<span>{tracks.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'fusion'}
+          className={tab === 'fusion' ? 'is-active' : ''}
+          onClick={() => setTab('fusion')}
+        >
+          <Layers size={13} /> 융합<span>{fusionEvents.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'history'}
+          className={tab === 'history' ? 'is-active' : ''}
+          onClick={() => setTab('history')}
+        >
+          <Clock size={13} /> 이력<span>{timeline.length}</span>
+        </button>
+      </div>
+
+      <div className="live-track-panel__body">
+        {tab === 'tracks' ? (
+          <div className="live-track-pane">
+            <div className="live-track-pane__head">
+              <p className="eyebrow">Live Tracks · {regionName}</p>
+              {militaryCount > 0 ? <span className="pill pill--military"><ShieldAlert size={12} /> 군용 {militaryCount}기</span> : null}
+            </div>
+            <TrackTable tracks={tracks} selectedTrackId={selectedTrackId} onSelectTrack={onSelectTrack} />
+            <AircraftIdentityCard identity={identity} track={selectedTrack} activeAirspace={activeAirspace} />
+            <TrackFusionCard context={fusionContext} />
+          </div>
+        ) : null}
+
+        {tab === 'fusion' ? (
+          <div className="live-track-pane">
+            <div className="live-track-pane__head">
+              <p className="eyebrow">Fusion Summary · {regionName}</p>
+              <span className="pill">읽기전용</span>
+            </div>
+            <FusionSummaryList fusionEvents={fusionEvents} />
+          </div>
+        ) : null}
+
+        {tab === 'history' ? (
+          <div className="live-track-pane live-track-pane--history">
+            <Timeline
+              events={timeline}
+              eyebrow="Event Timeline"
+              title="융합 이벤트 이력"
+              emptyMessage="현재 표시할 이벤트가 없습니다."
+            />
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}

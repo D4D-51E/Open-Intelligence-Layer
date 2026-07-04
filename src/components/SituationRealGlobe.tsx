@@ -195,6 +195,8 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
       severity,
       altitudeM: last.altitudeM,
       speedMs: last.velocityMs,
+      heading: last.headingDeg,
+      isMilitary: Boolean(track.isMilitary),
     }));
     labels.push(pointFeature(`track-label-${track.id}`, last.lat, last.lon, { kind: 'track-label', title, color: severity === 'warning' ? '#ff5d47' : severity === 'watch' ? '#ffb238' : '#7df9ff' }));
   }
@@ -341,6 +343,46 @@ function emptyCollection(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
 
+function createAircraftIcon(size = 44): ImageData | null {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = '#ffffff';
+  const c = size / 2;
+  // top-view airplane silhouette, nose pointing up (north) so icon-rotate=heading aligns
+  ctx.beginPath();
+  ctx.moveTo(c, size * 0.08);
+  ctx.lineTo(c + size * 0.06, size * 0.40);
+  ctx.lineTo(size * 0.94, size * 0.60);
+  ctx.lineTo(c + size * 0.06, size * 0.62);
+  ctx.lineTo(c + size * 0.05, size * 0.80);
+  ctx.lineTo(c + size * 0.17, size * 0.93);
+  ctx.lineTo(c, size * 0.85);
+  ctx.lineTo(c - size * 0.17, size * 0.93);
+  ctx.lineTo(c - size * 0.05, size * 0.80);
+  ctx.lineTo(c - size * 0.06, size * 0.62);
+  ctx.lineTo(size * 0.06, size * 0.60);
+  ctx.lineTo(c - size * 0.06, size * 0.40);
+  ctx.closePath();
+  ctx.fill();
+  return ctx.getImageData(0, 0, size, size);
+}
+
+function ensureAircraftIcon(map: MapLibreMap) {
+  if (map.hasImage('airmaven-aircraft')) return;
+  const icon = createAircraftIcon();
+  if (!icon) return;
+  try {
+    map.addImage('airmaven-aircraft', icon, { sdf: true });
+  } catch {
+    // image already registered by a concurrent call; safe to ignore
+  }
+}
+
 function setOrAddGeoJsonSource(map: MapLibreMap, id: string, data: FeatureCollection) {
   const existing = map.getSource(id) as GeoJSONSource | undefined;
   if (existing) {
@@ -477,7 +519,33 @@ function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) 
         ],
         'circle-stroke-width': ['match', ['get', 'kind'], 'region-switch', 2.2, 1.2],
         'circle-stroke-color': '#020403',
-        'circle-opacity': 0.95,
+        'circle-opacity': ['match', ['get', 'kind'], 'track', 0.28, 0.95],
+      },
+    });
+  }
+
+  ensureAircraftIcon(map);
+  if (map.hasImage('airmaven-aircraft') && !map.getLayer('airmaven-aircraft-symbols')) {
+    map.addLayer({
+      id: 'airmaven-aircraft-symbols',
+      type: 'symbol',
+      source: 'airmaven-points',
+      filter: ['==', ['get', 'kind'], 'track'],
+      layout: {
+        'icon-image': 'airmaven-aircraft',
+        'icon-size': ['case', ['coalesce', ['get', 'isMilitary'], false], 0.66, 0.52],
+        'icon-rotate': ['coalesce', ['get', 'heading'], 0],
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: {
+        'icon-color': [
+          'case', ['coalesce', ['get', 'isMilitary'], false], '#ff5d47',
+          ['match', ['get', 'severity'], 'warning', '#ff5d47', 'watch', '#ffb238', '#7df9ff'],
+        ],
+        'icon-halo-color': '#020403',
+        'icon-halo-width': 1.1,
       },
     });
   }

@@ -13,11 +13,11 @@
     "test": "vitest run",
     "lint": "eslint . --ext ts,tsx --max-warnings 0",
     "fetch:live": "node scripts/fetch-live-data.mjs",
+    "fetch:callsigns": "node scripts/fetch-callsign-db.mjs",
     "live:loop": "node scripts/live-data-loop.mjs",
     "dev:live": "node scripts/dev-live.mjs",
     "dev:cloudflare": "npm run build && npx wrangler dev --test-scheduled",
-    "deploy:cloudflare": "npm run build && npx wrangler deploy",
-    "test:stealthmole": "node scripts/stealthmole-smoke-test.mjs"
+    "deploy:cloudflare": "npm run build && npx wrangler deploy"
   },
   "dependencies": {
     "@turf/turf": "^7.2.0",

@@ -1,31 +1,36 @@
 import 'leaflet/dist/leaflet.css';
-import { Activity, Database, FileSearch, RadioTower, Satellite } from 'lucide-react';
+import { Activity, Database, RadioTower, Satellite } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SituationMap } from './components/SituationMap';
 import { MetricCard } from './components/MetricCard';
-import { Timeline } from './components/Timeline';
-import { ClaimQueuePanel } from './components/ClaimQueuePanel';
-import { VerificationPanel } from './components/VerificationPanel';
+import { LiveTrackPanel } from './components/LiveTrackPanel';
 import { IngestLogPanel, type IngestLogEntry } from './components/IngestLogPanel';
 import { detectAnomalies } from './lib/anomaly';
 import { getScenario } from './lib/baselineData';
+import { buildFusionEvents } from './lib/fusion';
+import { buildTrackFusionContext } from './lib/trackFusion';
+import { buildAircraftIdentity } from './lib/aircraftIdentity';
+import { parseOperatorDb, type OperatorDb } from './lib/callsignDb';
+import { matchActiveAirspace } from './lib/noticeAirspace';
 import { buildTimelineFromScenario, mergeLiveScenario, type LiveScenarioCache } from './lib/liveData';
 import { liveTrackHistoryForRegion, mergeLiveTrackHistory, type LiveTrackHistory } from './lib/liveTrackHistory';
 import { defaultRegionId, isRegionId, regions } from './lib/regions';
 import { safeExternalUrl } from './lib/safeLinks';
 import { sourceStatusIsOperational, sourceStatusLabel } from './lib/display';
-import { buildClaimMapEvents, buildVerificationCases, buildVerificationTimeline } from './lib/verify';
 import { implementedSourceCount, osintSourceCatalog, sourceStatusForCatalogEntry } from './lib/osintSources';
-import type { RegionId, Track, VerificationCase, VerificationVerdictLabel } from './lib/types';
+import { estimateAirplanesRadiusNm, fetchAirplanesLiveTracks } from './lib/airplanesLiveApi';
+import { estimateAdsbLolRadiusNm, fetchAdsbLolTracks } from './lib/adsbLolApi';
+import type { RegionId, Track } from './lib/types';
 
 type BasemapMode = 'globe' | 'hud-globe' | 'offline' | 'live';
 type ViewMode = 'ops' | 'narrative';
-type OpsReviewTab = 'claims' | 'briefing' | 'history';
-type AircraftTypeFilter = 'all' | Track['platformType'];
+type AircraftTypeFilter = 'all' | 'military' | Track['platformType'];
 const livePollIntervalMs = 30_000;
+const airplanesLivePollIntervalMs = 30_000;
 const maxIngestLogEntries = 60;
 const aircraftTypeOptions: Array<{ value: AircraftTypeFilter; label: string }> = [
   { value: 'all', label: '전체' },
+  { value: 'military', label: '군용' },
   { value: 'commercial', label: '민항' },
   { value: 'cargo', label: '화물' },
   { value: 'unknown', label: '미식별' },
@@ -42,6 +47,24 @@ const speedFilterOptions = [
   { value: 150, label: '150m/s+' },
   { value: 220, label: '220m/s+' },
 ];
+
+function mergeTracksById(existing: Track[], incoming: Track[]) {
+  const map = new Map<string, Track>();
+  for (const track of [...existing, ...incoming]) {
+    // Dedupe the same physical aircraft across ADS-B sources (OpenSky / Airplanes.live / adsb.lol)
+    // by ICAO24 hex when available, keeping the richest history and preserving the military flag.
+    const key = track.icao24 || track.id;
+    const current = map.get(key);
+    if (!current) {
+      map.set(key, track);
+      continue;
+    }
+    const richer = track.points.length > current.points.length ? track : current;
+    const isMilitary = Boolean(current.isMilitary || track.isMilitary);
+    map.set(key, isMilitary === Boolean(richer.isMilitary) ? richer : { ...richer, isMilitary });
+  }
+  return [...map.values()];
+}
 
 function initialBasemapMode(): BasemapMode {
   if (typeof window === 'undefined') return 'globe';
@@ -105,50 +128,6 @@ function formatShortDateTime(value: string | null | undefined) {
   });
 }
 
-function primarySentence(value: string) {
-  const match = value.match(/^.*?(?:입니다\.|습니다\.|[.!?。])(?:\s|$)/);
-  return match?.[0].trim() || value;
-}
-
-const verdictShortLabels: Record<VerificationVerdictLabel, string> = {
-  confirmed: '확인',
-  likely_true: '사실↑',
-  plausible_unverified: '가능',
-  inconclusive: '보류',
-  likely_false: '허위↑',
-  false: '허위',
-};
-
-function verdictLabel(value: VerificationVerdictLabel | undefined) {
-  return value ? verdictShortLabels[value] : '-';
-}
-
-function evidenceCountsFor(verificationCase: VerificationCase | undefined) {
-  const evidence = verificationCase?.evidence ?? [];
-  return {
-    supports: evidence.filter((item) => item.stance === 'supports').length,
-    contradicts: evidence.filter((item) => item.stance === 'contradicts').length,
-    gaps: evidence.filter((item) => item.stance === 'gap').length,
-    total: evidence.length,
-  };
-}
-
-function verificationBriefingLists(verificationCase: VerificationCase | undefined) {
-  if (!verificationCase) return {
-    findings: ['선택된 검증 주장이 없습니다.'],
-    nextChecks: ['Claim Queue에서 주장을 선택하세요.'],
-  };
-  const findings = [
-    ...verificationCase.evidence.filter((item) => item.stance === 'contradicts').slice(0, 2).map((item) => `반박: ${item.title}`),
-    ...verificationCase.evidence.filter((item) => item.stance === 'supports').slice(0, 2).map((item) => `지지: ${item.title}`),
-    ...verificationCase.evidence.filter((item) => item.stance === 'gap').slice(0, 2).map((item) => `공백: ${item.title}`),
-  ];
-  return {
-    findings: findings.length ? findings : [verificationCase.verdict.summary],
-    nextChecks: verificationCase.verdict.nextChecks,
-  };
-}
-
 function sourceCatalogStatusLabel(value: ReturnType<typeof sourceStatusForCatalogEntry>) {
   if (value === 'manual') return '수동 등록';
   if (value === 'commercial-ready') return '유료/파트너십';
@@ -159,7 +138,6 @@ function App() {
   const [regionId, setRegionId] = useState<RegionId>(initialRegionId);
   const [basemapMode, setBasemapMode] = useState<BasemapMode>(initialBasemapMode);
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
-  const [opsReviewTab, setOpsReviewTab] = useState<OpsReviewTab>('claims');
   const [liveCache, setLiveCache] = useState<LiveScenarioCache | null>(null);
   const [liveLoadState, setLiveLoadState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [liveLastCheckedAt, setLiveLastCheckedAt] = useState<string | null>(null);
@@ -169,48 +147,89 @@ function App() {
   const [aircraftTypeFilter, setAircraftTypeFilter] = useState<AircraftTypeFilter>('all');
   const [minimumAltitudeM, setMinimumAltitudeM] = useState(0);
   const [minimumSpeedMs, setMinimumSpeedMs] = useState(0);
-  const [activeClaimId, setActiveClaimId] = useState<string | undefined>();
+  const [selectedTrackId, setSelectedTrackId] = useState<string | undefined>();
+  const [airplanesTrackHistory, setAirplanesTrackHistory] = useState<LiveTrackHistory>({});
+  const [airplanesLoadState, setAirplanesLoadState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+  const [airplanesLastCheckedAt, setAirplanesLastCheckedAt] = useState<string | null>(null);
+  const [airplanesLastErrorAt, setAirplanesLastErrorAt] = useState<string | null>(null);
+  const [adsbLolTrackHistory, setAdsbLolTrackHistory] = useState<LiveTrackHistory>({});
+  const [adsbLolLoadState, setAdsbLolLoadState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+  const [adsbLolLastErrorAt, setAdsbLolLastErrorAt] = useState<string | null>(null);
+  const [operatorDb, setOperatorDb] = useState<OperatorDb | null>(null);
   const liveCacheRef = useRef<LiveScenarioCache | null>(null);
   const baseScenario = useMemo(() => getScenario(regionId), [regionId]);
+  const airplanesHistoryTracks = liveTrackHistoryForRegion(airplanesTrackHistory, regionId);
+  const adsbLolHistoryTracks = liveTrackHistoryForRegion(adsbLolTrackHistory, regionId);
+  const liveHistoryTracks = liveTrackHistoryForRegion(liveTrackHistory, regionId);
+  const mergedHistoryTracks = useMemo(
+    () => mergeTracksById(mergeTracksById(liveHistoryTracks, airplanesHistoryTracks), adsbLolHistoryTracks),
+    [adsbLolHistoryTracks, airplanesHistoryTracks, liveHistoryTracks],
+  );
   const mergedScenario = useMemo(() => {
     const liveRegion = liveCache?.regions?.[regionId];
-    const historyTracks = liveTrackHistoryForRegion(liveTrackHistory, regionId);
-    return mergeLiveScenario(baseScenario, historyTracks.length ? { ...liveRegion, tracks: historyTracks } : liveRegion);
-  }, [baseScenario, liveCache, liveTrackHistory, regionId]);
+    const regionTracks = mergedHistoryTracks.length ? { ...liveRegion, tracks: mergedHistoryTracks } : liveRegion;
+    return mergeLiveScenario(baseScenario, regionTracks);
+  }, [baseScenario, liveCache, mergedHistoryTracks, regionId]);
   const filteredTracks = useMemo(
     () => mergedScenario.tracks.filter((track) => {
-      if (aircraftTypeFilter !== 'all' && track.platformType !== aircraftTypeFilter) return false;
+      if (aircraftTypeFilter === 'military') {
+        if (!track.isMilitary) return false;
+      } else if (aircraftTypeFilter !== 'all' && track.platformType !== aircraftTypeFilter) {
+        return false;
+      }
       const last = track.points.at(-1);
       if (!last) return false;
       return last.altitudeM >= minimumAltitudeM && last.velocityMs >= minimumSpeedMs;
     }),
     [aircraftTypeFilter, mergedScenario.tracks, minimumAltitudeM, minimumSpeedMs],
   );
-  const scenario = useMemo(() => {
-    const nextScenario = { ...mergedScenario, tracks: filteredTracks, fusionEvents: [] };
-    return {
-      ...nextScenario,
-      timeline: buildTimelineFromScenario(nextScenario),
-    };
-  }, [filteredTracks, mergedScenario]);
-  const anomalies = useMemo(() => detectAnomalies(scenario), [scenario]);
-  const verificationCases = useMemo(() => buildVerificationCases(scenario), [scenario]);
-  const activeVerificationCase = useMemo(
-    () => verificationCases.find((item) => item.claim.id === activeClaimId) ?? verificationCases[0],
-    [activeClaimId, verificationCases],
+  const anomalies = useMemo(
+    () => detectAnomalies({ ...mergedScenario, tracks: filteredTracks }),
+    [mergedScenario, filteredTracks],
   );
-  const claimMapEvents = useMemo(() => buildClaimMapEvents(verificationCases), [verificationCases]);
-  const verificationTimeline = useMemo(() => buildVerificationTimeline(verificationCases), [verificationCases]);
+  const scenario = useMemo(() => {
+    const core = { ...mergedScenario, tracks: filteredTracks };
+    const fusionEvents = buildFusionEvents(core, anomalies);
+    const withFusion = { ...core, fusionEvents };
+    return { ...withFusion, timeline: buildTimelineFromScenario(withFusion) };
+  }, [anomalies, filteredTracks, mergedScenario]);
+  const selectedTrack = useMemo(
+    () => scenario.tracks.find((track) => track.id === selectedTrackId),
+    [scenario.tracks, selectedTrackId],
+  );
+  const fusionContext = useMemo(
+    () => (selectedTrack ? buildTrackFusionContext(selectedTrack, scenario, anomalies) : null),
+    [anomalies, scenario, selectedTrack],
+  );
+  const aircraftIdentity = useMemo(
+    () => (selectedTrack ? buildAircraftIdentity(selectedTrack, operatorDb ?? undefined) : null),
+    [operatorDb, selectedTrack],
+  );
+  const activeAirspace = useMemo(() => {
+    const last = selectedTrack?.points.at(-1);
+    if (!selectedTrack || !last) return [];
+    return matchActiveAirspace(
+      { lat: last.lat, lon: last.lon, altitudeM: last.altitudeM, observedAt: last.observedAt },
+      scenario.notices,
+      new Date(),
+    );
+  }, [scenario.notices, selectedTrack]);
 
   const isGlobalRegion = regionId === 'global';
   const rawTrackCount = mergedScenario.tracks.length;
   const filteredTrackCount = scenario.tracks.length;
+  const militaryCount = useMemo(() => scenario.tracks.filter((track) => track.isMilitary).length, [scenario.tracks]);
+  const overviewFusion = scenario.fusionEvents[0];
   const handleRegionSelect = useCallback((value: RegionId) => {
     setRegionId(value);
+    setSelectedTrackId(undefined);
   }, []);
   const handleRegionChange = (value: string) => {
     if (isRegionId(value)) handleRegionSelect(value);
   };
+  const handleSelectTrack = useCallback((trackId: string) => {
+    setSelectedTrackId((current) => (current === trackId ? undefined : trackId));
+  }, []);
   const liveRegionStatus = liveCache?.regions?.[regionId]?.sourceStatus;
   const liveSourceReasons = liveCache?.regions?.[regionId]?.sourceReasons;
   const liveSourceUpdatedAt = liveCache?.regions?.[regionId]?.sourceUpdatedAt;
@@ -228,33 +247,56 @@ function App() {
       reason: liveSourceReasons?.[source],
     }));
   const liveTrackCount = liveCache?.regions?.[regionId]?.tracks?.length ?? 0;
+  const airplanesTrackCount = airplanesHistoryTracks.length;
   const trackDetail = isGlobalRegion
     ? '상세 항적은 AOI 선택 시 조회'
     : liveRegionStatus?.opensky === 'live' && liveTrackCount > 0
       ? `OpenSky live ${liveTrackCount}`
-      : liveRegionStatus?.opensky === 'cached' && scenario.tracks.length > 0
+      : liveRegionStatus?.opensky === 'cached' && mergedScenario.tracks.length > 0
         ? 'OpenSky 캐시 재사용'
         : liveRegionStatus?.opensky === 'unavailable'
           ? 'OpenSky 사용 불가'
           : 'OpenSky 수집 대기';
+  const airplanesTrackSummary = airplanesTrackCount > 0 ? `Airplanes live ${airplanesTrackCount}기` : 'Airplanes live 없음';
+  const airplanesLoadStateEffective = isGlobalRegion ? 'unavailable' : airplanesLoadState;
+  const airplanesLoadSummary = `${liveLoadStateLabel(airplanesLoadStateEffective)} · ${airplanesTrackCount > 0 ? `${airplanesTrackCount}기` : '0기'}`;
+  const adsbLolTrackCount = adsbLolHistoryTracks.length;
+  const adsbLolLoadStateEffective = isGlobalRegion ? 'unavailable' : adsbLolLoadState;
+  const adsbLolLoadSummary = `${liveLoadStateLabel(adsbLolLoadStateEffective)} · ${adsbLolTrackCount}기`;
   const weatherDetail = isGlobalRegion
     ? '전세계 모드는 지역별 기상 상세 비활성'
     : scenario.weather
       ? `운량 ${scenario.weather.cloudCoverPct}%, 돌풍 ${scenario.weather.windGustKmh}km/h`
       : 'Open-Meteo 수집 대기';
-  const activeEvidenceCounts = evidenceCountsFor(activeVerificationCase);
-  const verificationBrief = verificationBriefingLists(activeVerificationCase);
   const sourceCoverageCount = implementedSourceCount(scenario);
-  const verdictTone = activeVerificationCase?.verdict.label === 'false' || activeVerificationCase?.verdict.label === 'likely_false'
-    ? 'warning'
-    : activeVerificationCase?.verdict.label === 'confirmed' || activeVerificationCase?.verdict.label === 'likely_true'
-      ? 'good'
-      : activeVerificationCase ? 'watch' : 'neutral';
+  const fusionConfidencePct = overviewFusion ? Math.round(overviewFusion.confidence * 100) : null;
+  const fusionFactorDetail = overviewFusion
+    ? `출처 ${Math.round(overviewFusion.confidenceFactors.sourceReliability * 100)}% · 최신 ${Math.round(overviewFusion.confidenceFactors.freshness * 100)}% · 교차 ${Math.round(overviewFusion.confidenceFactors.crossSourceAgreement * 100)}%`
+    : '융합할 실데이터 대기';
   const appendIngestLog = useCallback((level: IngestLogEntry['level'], message: string, at = new Date().toISOString()) => {
     setIngestLogs((current) => [
       { id: `${at}-${level}-${current.length}`, at, level, message },
       ...current,
     ].slice(0, maxIngestLogEntries));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function') return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await window.fetch('/data/aircraft-operators.json', { cache: 'force-cache' });
+        if (!response.ok) return;
+        const json = await response.json();
+        if (cancelled) return;
+        setOperatorDb(parseOperatorDb(json));
+      } catch {
+        // Offline: aircraft identity falls back to the built-in prefix table.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -318,35 +360,129 @@ function App() {
     };
   }, [appendIngestLog, regionId]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || regionId === 'global') {
+      return;
+    }
+
+    let cancelled = false;
+    const inFlight = new Set<AbortController>();
+
+    const loadAirplanesLive = async () => {
+      const checkedAt = new Date().toISOString();
+      const controller = new AbortController();
+      inFlight.add(controller);
+      try {
+        const tracks = await fetchAirplanesLiveTracks({
+          region: baseScenario.region,
+          radiusNm: estimateAirplanesRadiusNm(baseScenario.region),
+          signal: controller.signal,
+          rateLimitMs: 1_000,
+        });
+        if (cancelled) return;
+        setAirplanesTrackHistory((current) => mergeLiveTrackHistory(current, regionId, tracks, checkedAt));
+        setAirplanesLoadState('ready');
+        setAirplanesLastCheckedAt(checkedAt);
+        setAirplanesLastErrorAt(null);
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setAirplanesLoadState('unavailable');
+        setAirplanesLastCheckedAt(checkedAt);
+        setAirplanesLastErrorAt(checkedAt);
+        appendIngestLog('warn', `Airplanes.live 폴링 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}` , checkedAt);
+      } finally {
+        inFlight.delete(controller);
+      }
+    };
+
+    void loadAirplanesLive();
+    const timer = window.setInterval(() => {
+      void loadAirplanesLive();
+    }, airplanesLivePollIntervalMs);
+
+    return () => {
+      cancelled = true;
+      for (const controller of inFlight) controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [appendIngestLog, baseScenario.region, regionId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || regionId === 'global') {
+      return;
+    }
+
+    let cancelled = false;
+    const inFlight = new Set<AbortController>();
+
+    const loadAdsbLol = async () => {
+      const checkedAt = new Date().toISOString();
+      const controller = new AbortController();
+      inFlight.add(controller);
+      try {
+        const tracks = await fetchAdsbLolTracks({
+          region: baseScenario.region,
+          radiusNm: estimateAdsbLolRadiusNm(baseScenario.region),
+          signal: controller.signal,
+          rateLimitMs: 1_000,
+        });
+        if (cancelled) return;
+        setAdsbLolTrackHistory((current) => mergeLiveTrackHistory(current, regionId, tracks, checkedAt));
+        setAdsbLolLoadState('ready');
+        setAdsbLolLastErrorAt(null);
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setAdsbLolLoadState('unavailable');
+        setAdsbLolLastErrorAt(checkedAt);
+        appendIngestLog('warn', `adsb.lol 폴링 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`, checkedAt);
+      } finally {
+        inFlight.delete(controller);
+      }
+    };
+
+    void loadAdsbLol();
+    const timer = window.setInterval(() => {
+      void loadAdsbLol();
+    }, airplanesLivePollIntervalMs);
+
+    return () => {
+      cancelled = true;
+      for (const controller of inFlight) controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [appendIngestLog, baseScenario.region, regionId]);
+
   const metrics = (
     <section className="metrics-grid">
       <MetricCard
-        label="검증주장"
-        value={verificationCases.length}
-        detail={activeVerificationCase ? activeVerificationCase.claim.shortTitle : 'Claim Queue 대기'}
-        tone={verificationCases.some((item) => item.claim.priority === 'warning') ? 'watch' : 'neutral'}
-        icon={<Activity size={18} />}
-      />
-      <MetricCard
-        label="현재판정"
-        value={verdictLabel(activeVerificationCase?.verdict.label)}
-        detail={activeVerificationCase ? `신뢰도 ${Math.round(activeVerificationCase.verdict.confidence * 100)}%` : '선택 없음'}
-        tone={verdictTone}
-        icon={<FileSearch size={18} />}
-      />
-      <MetricCard
-        label="관측레이어"
-        value={`${filteredTrackCount}/${scenario.satellites.length}`}
-        detail={`항적/위성 · ${rawTrackCount === filteredTrackCount ? trackDetail : `필터 ${filteredTrackCount}/${rawTrackCount}`} · ${weatherDetail}`}
-        tone="neutral"
+        label="실시간 항적"
+        value={filteredTrackCount}
+        detail={`${isGlobalRegion ? trackDetail : `${trackDetail} · ${airplanesTrackSummary}`}${militaryCount > 0 ? ` · 군용 ${militaryCount}기` : ''}`}
+        tone={militaryCount > 0 ? 'watch' : 'neutral'}
         icon={<RadioTower size={18} />}
       />
       <MetricCard
-        label="OSINT소스"
-        value={`${sourceCoverageCount}/${osintSourceCatalog.length}`}
-        detail={`근거 ${activeEvidenceCounts.total} · 지지 ${activeEvidenceCounts.supports} / 반박 ${activeEvidenceCounts.contradicts} / 공백 ${activeEvidenceCounts.gaps}`}
-        tone={activeEvidenceCounts.gaps > activeEvidenceCounts.supports + activeEvidenceCounts.contradicts ? 'watch' : 'neutral'}
+        label="융합 신뢰도"
+        value={fusionConfidencePct != null ? `${fusionConfidencePct}%` : '-'}
+        detail={fusionFactorDetail}
+        tone={fusionConfidencePct != null && fusionConfidencePct >= 60 ? 'good' : overviewFusion ? 'watch' : 'neutral'}
+        icon={<Activity size={18} />}
+      />
+      <MetricCard
+        label="관측 레이어"
+        value={`${filteredTrackCount}/${scenario.satellites.length}`}
+        detail={`항적/위성 · ${rawTrackCount === filteredTrackCount ? trackDetail : `필터 ${filteredTrackCount}/${rawTrackCount}`} · ${weatherDetail}`}
+        tone="neutral"
         icon={<Satellite size={18} />}
+      />
+      <MetricCard
+        label="소스 커버리지"
+        value={`${sourceCoverageCount}/${osintSourceCatalog.length}`}
+        detail={`OSINT ${scenario.osint.length}·이벤트 ${scenario.osintEvents.length} · 공역 ${scenario.airspaceContexts.length} · 선박 ${scenario.ships.length}${sourceReasonItems.length ? ` · 공백 ${sourceReasonItems.length}` : ''}`}
+        tone={sourceReasonItems.length > sourceCoverageCount ? 'watch' : 'neutral'}
+        icon={<Database size={18} />}
       />
     </section>
   );
@@ -359,7 +495,7 @@ function App() {
           <h2>{scenario.region.shortName}</h2>
         </div>
         <span className="pill pill--dispatch">
-          VERIFY · 주장 {verificationCases.length} · 항적 {filteredTrackCount}/{rawTrackCount} · OSINT {scenario.osintEvents.length + claimMapEvents.length} · 위성장면 {scenario.satelliteScenes?.length ?? 0}
+          LIVE · 항적 {filteredTrackCount}/{rawTrackCount}{militaryCount > 0 ? ` · 군용 ${militaryCount}` : ''} · 위성 {scenario.satellites.length} · OSINT {scenario.osintEvents.length} · 융합 {scenario.fusionEvents.length}
         </span>
       </div>
       <SituationMap
@@ -375,46 +511,34 @@ function App() {
         airRoutes={scenario.airRoutes}
         notices={scenario.notices}
         airspaceContexts={scenario.airspaceContexts}
-        osintEvents={[...scenario.osintEvents, ...claimMapEvents]}
+        osintEvents={scenario.osintEvents}
         anomalies={anomalies}
         basemapMode={basemapMode}
       />
     </div>
   );
 
-  const opsBriefingPanel = (
-    <section className="panel ops-briefing-panel">
-      <div className="panel__header panel__header--row">
-        <div>
-          <p className="eyebrow">Verification Brief</p>
-          <h2>{activeVerificationCase?.claim.shortTitle ?? '검증 브리핑'}</h2>
-        </div>
-        <span className="pill">{verdictLabel(activeVerificationCase?.verdict.label)} · 검토용</span>
-      </div>
-      <p className="ops-briefing-summary">{primarySentence(activeVerificationCase?.verdict.summary ?? '선택된 검증 주장이 없습니다.')}</p>
-      <div className="ops-briefing-grid">
-        <div>
-          <h3>핵심 근거</h3>
-          <ul>
-            {verificationBrief.findings.slice(0, 4).map((finding) => <li key={finding}>{finding}</li>)}
-          </ul>
-        </div>
-        <div>
-          <h3>다음 확인</h3>
-          <ul>
-            {verificationBrief.nextChecks.slice(0, 4).map((check) => <li key={check}>{check}</li>)}
-          </ul>
-        </div>
-      </div>
-    </section>
+  const liveTrackPanel = (
+    <LiveTrackPanel
+      regionName={scenario.region.shortName}
+      tracks={scenario.tracks}
+      selectedTrackId={selectedTrackId}
+      onSelectTrack={handleSelectTrack}
+      fusionContext={fusionContext}
+      fusionEvents={scenario.fusionEvents}
+      timeline={scenario.timeline}
+      militaryCount={militaryCount}
+      identity={aircraftIdentity}
+      activeAirspace={activeAirspace}
+    />
   );
 
   const opsTrackSummary = isGlobalRegion
-    ? `주장 ${verificationCases.length} · OSINT ${scenario.osintEvents.length} · 위성 ${scenario.satellites.length} · AOI 선택 시 상세`
-    : `주장 ${verificationCases.length} · 항적 ${filteredTrackCount}/${rawTrackCount} · 위성 ${scenario.satellites.length} · OSINT ${scenario.osintEvents.length}`;
+    ? `융합 ${scenario.fusionEvents.length} · OSINT ${scenario.osintEvents.length} · 위성 ${scenario.satellites.length} · AOI 선택 시 상세`
+    : `항적 ${filteredTrackCount}/${rawTrackCount}${militaryCount > 0 ? `(군용 ${militaryCount})` : ''} · 위성 ${scenario.satellites.length} · OSINT ${scenario.osintEvents.length}`;
   const opsSnapshotSummary = liveGeneratedAt
-    ? `${liveCacheAge} · 출처 ${liveSourceOk}/${liveSourceTotal || '-'}`
-    : '스냅샷 대기';
+    ? `${liveCacheAge} · 출처 ${liveSourceOk}/${liveSourceTotal || '-'} · Airplanes ${airplanesTrackSummary}`
+    : `스냅샷 대기 · Airplanes ${airplanesLoadSummary}`;
 
   const opsCommandBar = (
     <section className="ops-command-bar" aria-label="상황판 주요 설정">
@@ -468,97 +592,18 @@ function App() {
         <strong>스냅샷 {liveLoadStateLabel(liveLoadState)}</strong>
         <span>{opsSnapshotSummary}</span>
         <span>{opsTrackSummary}</span>
+        <span>Airplanes {airplanesLoadSummary}</span>
+        <span>adsb.lol {adsbLolLoadSummary}</span>
         {sourceReasonItems.length > 0 ? <em>주의 {sourceReasonItems.length}</em> : null}
         {liveLastErrorAt ? <em>폴링 오류</em> : null}
-      </div>
-    </section>
-  );
-
-  const opsReviewPanel = (
-    <section className="panel ops-review-panel" aria-label="주장 검증, 검증 브리핑, 근거 이력">
-      <div className="ops-review-tabs" role="tablist" aria-label="오른쪽 분석 패널">
-        <button
-          id="ops-review-tab-claims"
-          type="button"
-          role="tab"
-          aria-selected={opsReviewTab === 'claims'}
-          aria-controls="ops-review-panel-claims"
-          className={opsReviewTab === 'claims' ? 'is-active' : ''}
-          onClick={() => setOpsReviewTab('claims')}
-        >
-          주장
-          <span>{verificationCases.length}</span>
-        </button>
-        <button
-          id="ops-review-tab-briefing"
-          type="button"
-          role="tab"
-          aria-selected={opsReviewTab === 'briefing'}
-          aria-controls="ops-review-panel-briefing"
-          className={opsReviewTab === 'briefing' ? 'is-active' : ''}
-          onClick={() => setOpsReviewTab('briefing')}
-        >
-          검증 브리핑
-          <span>{verificationBrief.findings.length}</span>
-        </button>
-        <button
-          id="ops-review-tab-history"
-          type="button"
-          role="tab"
-          aria-selected={opsReviewTab === 'history'}
-          aria-controls="ops-review-panel-history"
-          className={opsReviewTab === 'history' ? 'is-active' : ''}
-          onClick={() => setOpsReviewTab('history')}
-        >
-          근거 이력
-          <span>{verificationTimeline.length}</span>
-        </button>
-      </div>
-      <div className="ops-review-panel__body">
-        <div
-          id="ops-review-panel-claims"
-          role="tabpanel"
-          aria-labelledby="ops-review-tab-claims"
-          className="ops-review-pane ops-review-pane--queue"
-          hidden={opsReviewTab !== 'claims'}
-        >
-          <ClaimQueuePanel
-            cases={verificationCases}
-            activeClaimId={activeVerificationCase?.claim.id}
-            compact
-            onSelect={setActiveClaimId}
-          />
-          <VerificationPanel verificationCase={activeVerificationCase} compact />
-        </div>
-        <div
-          id="ops-review-panel-briefing"
-          role="tabpanel"
-          aria-labelledby="ops-review-tab-briefing"
-          className="ops-review-pane ops-review-pane--briefing"
-          hidden={opsReviewTab !== 'briefing'}
-        >
-          {opsBriefingPanel}
-        </div>
-        <div
-          id="ops-review-panel-history"
-          role="tabpanel"
-          aria-labelledby="ops-review-tab-history"
-          className="ops-review-pane ops-review-pane--history"
-          hidden={opsReviewTab !== 'history'}
-        >
-          <Timeline
-            events={verificationTimeline}
-            eyebrow="Evidence Timeline"
-            title="근거 확인 이력"
-            emptyMessage="현재 표시할 검증 근거가 없습니다."
-          />
-        </div>
+        {airplanesLastErrorAt ? <em>Airplanes 폴링 오류</em> : null}
+        {adsbLolLastErrorAt ? <em>adsb.lol 폴링 오류</em> : null}
       </div>
     </section>
   );
 
   return (
-    <main aria-label="AirMaven Verify OSINT 검증 상황판" className={`app-shell ${viewMode === 'ops' ? 'app-shell--ops' : ''}`}>
+    <main aria-label="AirMaven 실시간 항적·다중소스 융합 상황판" className={`app-shell ${viewMode === 'ops' ? 'app-shell--ops' : ''}`}>
       {viewMode === 'ops' ? opsCommandBar : (
         <>
           <section className="control-strip">
@@ -598,6 +643,10 @@ function App() {
                   ? `생성 ${liveGeneratedAt} · 캐시 ${liveCacheAge} · 출처 ${liveSourceOk}/${liveSourceTotal || '-'} · 확인 ${liveCheckedAge} · ${livePollSeconds}초`
                   : '실제 공개 API 스냅샷 대기'}
                 {liveLastErrorAt ? ` · 마지막 폴링 오류 ${formatRelativeAge(liveLastErrorAt)}` : ''}
+                {` · Airplanes ${airplanesLoadSummary} · 마지막 확인 ${formatRelativeAge(airplanesLastCheckedAt)}`}
+                {airplanesLastErrorAt ? ` · Airplanes 오류 ${formatRelativeAge(airplanesLastErrorAt)}` : ''}
+                {` · adsb.lol ${adsbLolLoadSummary}`}
+                {adsbLolLastErrorAt ? ` · adsb.lol 오류 ${formatRelativeAge(adsbLolLastErrorAt)}` : ''}
               </span>
             </div>
           </section>
@@ -623,8 +672,8 @@ function App() {
             </div>
             <p className="filter-strip__summary">
               {isGlobalRegion
-                ? `검증 주장 ${verificationCases.length} · 전세계 OSINT 포인트 ${scenario.osintEvents.length + claimMapEvents.length} · 위성 ${scenario.satellites.length}`
-                : `검증 주장 ${verificationCases.length} · 표시 항적 ${filteredTrackCount}/${rawTrackCount} · 위성 ${scenario.satellites.length} · OSINT 포인트 ${scenario.osintEvents.length + claimMapEvents.length}`}
+                ? `융합 ${scenario.fusionEvents.length} · 전세계 OSINT 포인트 ${scenario.osintEvents.length} · 위성 ${scenario.satellites.length}`
+                : `표시 항적 ${filteredTrackCount}/${rawTrackCount}${militaryCount > 0 ? ` · 군용 ${militaryCount}` : ''} · 위성 ${scenario.satellites.length} · OSINT 포인트 ${scenario.osintEvents.length}`}
             </p>
           </section>
         </>
@@ -649,7 +698,7 @@ function App() {
           <div className="ops-cell ops-cell--metrics">{metrics}</div>
           <div className="ops-cell ops-cell--map">{mapPanel}</div>
           <div className="ops-cell ops-cell--alerts">
-            {opsReviewPanel}
+            {liveTrackPanel}
           </div>
           <div className="ops-cell ops-cell--stream">
             <IngestLogPanel logs={ingestLogs} />
@@ -660,27 +709,13 @@ function App() {
           {metrics}
           <section className="map-grid">
             {mapPanel}
-            <ClaimQueuePanel
-              cases={verificationCases}
-              activeClaimId={activeVerificationCase?.claim.id}
-              onSelect={setActiveClaimId}
-            />
-          </section>
-
-          <section className="content-grid">
-            <VerificationPanel verificationCase={activeVerificationCase} />
-            <Timeline
-              events={verificationTimeline}
-              eyebrow="Evidence Timeline"
-              title="근거 확인 이력"
-              emptyMessage="현재 표시할 검증 근거가 없습니다."
-            />
+            {liveTrackPanel}
           </section>
 
           <section className="panel source-matrix">
             <div className="panel__header">
               <p className="eyebrow">OSINT Integrations</p>
-              <h2>검증 소스 연계 매트릭스</h2>
+              <h2>다중소스 연계 매트릭스</h2>
             </div>
             <div className="source-matrix__grid">
               {osintSourceCatalog.map((source) => {
@@ -701,7 +736,7 @@ function App() {
           </section>
 
           <footer>
-            <strong>안전 기준:</strong> AirMaven Verify는 공개 OSINT 근거의 지지·반박·공백을 표시하는 검증 보조 시스템입니다. 데이터가 없으면 합성 값으로 채우지 않으며, 표적 식별, 타격 권고, 자동 교전 판단은 수행하지 않습니다.
+            <strong>안전 기준:</strong> AirMaven는 공개 ADS-B 항적과 궤도·기상·OSINT 공개 소스를 같은 AOI로 노출·융합하는 분석관 보조 시스템입니다. 데이터가 없으면 합성 값으로 채우지 않으며, 군용 표시는 공개 ADS-B 플래그 노출일 뿐 식별·표적 지정·타격 권고·자동 교전 판단을 수행하지 않습니다.
           </footer>
         </>
       )}

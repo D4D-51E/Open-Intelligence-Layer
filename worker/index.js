@@ -562,11 +562,29 @@ async function handleManualRefresh(request, env) {
   return jsonResponse(result);
 }
 
+// adsb.lol sends no CORS header, so the browser cannot call it directly.
+// Proxy /adsb-lol/* same-origin to https://api.adsb.lol/* (mirrors the Vite dev proxy
+// and the Vercel rewrite) so the browser fetch succeeds.
+async function handleAdsbLolProxy(url) {
+  const target = `https://api.adsb.lol${url.pathname.replace(/^\/adsb-lol/, '')}${url.search}`;
+  const upstream = await fetch(target, { headers: { 'user-agent': userAgent, accept: 'application/json' } });
+  const body = await upstream.text();
+  return new Response(body, {
+    status: upstream.status,
+    headers: {
+      'content-type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      'access-control-allow-origin': '*',
+    },
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/live-scenarios') return handleLiveScenarios(env);
     if (url.pathname === '/api/refresh-live-data') return handleManualRefresh(request, env);
+    if (url.pathname.startsWith('/adsb-lol/')) return handleAdsbLolProxy(url);
     return env.ASSETS.fetch(request);
   },
 

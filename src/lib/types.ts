@@ -35,6 +35,10 @@ export type Track = {
   points: TrackPoint[];
   baselineCorridorKm: number;
   notes?: string;
+  isMilitary?: boolean;
+  icao24?: string;
+  registration?: string;
+  typeCode?: string;
 };
 
 export type ShipTrackPoint = {
@@ -130,7 +134,7 @@ export type AirRoute = {
 export type AirspaceNotice = {
   id: string;
   regionId: RegionId;
-  source: 'icao-notam-cache' | 'osint-derived-notice';
+  source: 'icao-notam-cache' | 'skylink-notam-cache' | 'osint-derived-notice';
   title: string;
   description: string;
   publishedAt: string;
@@ -284,91 +288,6 @@ export type FusionEvent = {
   recommendedAction: string;
   reviewDefault: FusionReviewStatus;
   safetyNote: string;
-};
-
-export type ClaimType = 'aircraft_shootdown' | 'base_strike' | 'airspace_closure' | 'drone_loss' | 'satellite_claim' | 'force_movement';
-
-export type VerificationVerdictLabel =
-  | 'confirmed'
-  | 'likely_true'
-  | 'plausible_unverified'
-  | 'inconclusive'
-  | 'likely_false'
-  | 'false';
-
-export type EvidenceCategory =
-  | 'official'
-  | 'news'
-  | 'factcheck'
-  | 'track'
-  | 'satellite_scene'
-  | 'orbital_pass'
-  | 'thermal'
-  | 'weather'
-  | 'notam'
-  | 'airspace'
-  | 'media_forensics'
-  | 'source_gap'
-  | 'commercial_imagery';
-
-export type EvidenceStance = 'supports' | 'contradicts' | 'gap' | 'context';
-
-export type VerificationClaim = {
-  id: string;
-  regionId: RegionId;
-  title: string;
-  shortTitle: string;
-  claimType: ClaimType;
-  actor: string;
-  targetAsset?: string;
-  claimedAt: string;
-  createdAt: string;
-  claimedLocation: {
-    name: string;
-    lat: number;
-    lon: number;
-  };
-  timeWindowStart: string;
-  timeWindowEnd: string;
-  geoRadiusKm: number;
-  geoBufferKm?: number;
-  claimSummary: string;
-  sourceUrls: string[];
-  keywords: string[];
-  priority: Severity;
-};
-
-export type EvidenceItem = {
-  id: string;
-  claimId: string;
-  category: EvidenceCategory;
-  stance: EvidenceStance;
-  title: string;
-  summary: string;
-  source: string;
-  confidence: number;
-  observedAt?: string;
-  url?: string;
-  relatedIds: string[];
-  caveat?: string;
-};
-
-export type VerificationVerdict = {
-  label: VerificationVerdictLabel;
-  confidence: number;
-  summary: string;
-  supportingEvidenceIds: string[];
-  contradictingEvidenceIds: string[];
-  gapEvidenceIds: string[];
-  caveats: string[];
-  nextChecks: string[];
-};
-
-export type VerificationCase = {
-  claim: VerificationClaim;
-  evidence: EvidenceItem[];
-  verdict: VerificationVerdict;
-  derivedMapEvents?: OsintMapEvent[];
 };
 
 export type Briefing = {
