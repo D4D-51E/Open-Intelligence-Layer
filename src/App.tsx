@@ -107,6 +107,7 @@ function App() {
   const [liveCache, setLiveCache] = useState<LiveScenarioCache | null>(null);
   const [aircraftTypeFilter, setAircraftTypeFilter] = useState<AircraftTypeFilter>('all');
   const [minimumAltitudeM, setMinimumAltitudeM] = useState(0);
+  const [showAirspace, setShowAirspace] = useState(true);
   const [timelineMode, setTimelineMode] = useState(false);
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const [timelineValue, setTimelineValue] = useState(() => Date.now());
@@ -296,6 +297,7 @@ function App() {
           anomalies={anomalies}
           onViewportChange={handleViewportChange}
           focusTrack={focusTrack}
+          showAirspace={showAirspace}
         />
       </div>
 
@@ -323,6 +325,9 @@ function App() {
             <option value={9000}>9,000m+</option>
           </select>
         </label>
+        <button type="button" className={showAirspace ? 'is-active' : ''} onClick={() => setShowAirspace((s) => !s)}>
+          공역 {showAirspace ? 'ON' : 'OFF'}
+        </button>
         <button
           type="button"
           className={timelineMode ? 'is-active' : ''}

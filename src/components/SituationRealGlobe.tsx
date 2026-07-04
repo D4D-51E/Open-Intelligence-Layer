@@ -22,6 +22,7 @@ type SituationRealGlobeProps = {
   anomalies: Anomaly[];
   onViewportChange?: (viewport: { bbox: [number, number, number, number]; zoom: number; center: [number, number] }) => void;
   focusTrack?: { lat: number; lon: number; html: string } | null;
+  showAirspace?: boolean;
 };
 
 type Coordinate = [number, number];
@@ -394,6 +395,57 @@ function setOrAddGeoJsonSource(map: MapLibreMap, id: string, data: FeatureCollec
   map.addSource(id, { type: 'geojson', data });
 }
 
+// OpenAIP airspace vector tiles (proxied same-origin via /api/openaip to hide the key).
+// Rendered beneath the track/point layers so aircraft stay on top. Coloured by airspace
+// `type` (OpenAIP enum): restricted/danger/prohibited emphasised, control zones in blue.
+function ensureAirspaceLayers(map: MapLibreMap, visible: boolean) {
+  if (!map.getSource('openaip')) {
+    map.addSource('openaip', {
+      type: 'vector',
+      tiles: [`${window.location.origin}/api/openaip/{z}/{x}/{y}`],
+      minzoom: 2,
+      maxzoom: 11,
+    });
+  }
+  const airspaceColor: maplibregl.ExpressionSpecification = [
+    'match', ['get', 'type'],
+    1, '#ffb238',
+    2, '#ff5d47',
+    3, '#ff3f5f',
+    4, '#7dd3fc',
+    5, '#8ab4ff',
+    '#7df9ff',
+  ];
+  const visibility = visible ? 'visible' : 'none';
+  if (!map.getLayer('openaip-airspace-fill')) {
+    map.addLayer({
+      id: 'openaip-airspace-fill',
+      type: 'fill',
+      source: 'openaip',
+      'source-layer': 'airspaces',
+      layout: { visibility },
+      paint: { 'fill-color': airspaceColor, 'fill-opacity': 0.1 },
+    });
+  }
+  if (!map.getLayer('openaip-airspace-line')) {
+    map.addLayer({
+      id: 'openaip-airspace-line',
+      type: 'line',
+      source: 'openaip',
+      'source-layer': 'airspaces',
+      layout: { visibility, 'line-join': 'round' },
+      paint: { 'line-color': airspaceColor, 'line-width': 1, 'line-opacity': 0.6 },
+    });
+  }
+}
+
+function setAirspaceVisibility(map: MapLibreMap, visible: boolean) {
+  const visibility = visible ? 'visible' : 'none';
+  for (const id of ['openaip-airspace-fill', 'openaip-airspace-line']) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility);
+  }
+}
+
 function ensureOverlayLayers(map: MapLibreMap, collections: OverlayCollections) {
   setOrAddGeoJsonSource(map, 'airmaven-polygons', collections.polygons);
   setOrAddGeoJsonSource(map, 'airmaven-lines', collections.lines);
@@ -592,16 +644,17 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
   const isLoadedRef = useRef(false);
   const focusPopupRef = useRef<maplibregl.Popup | null>(null);
   const collections = useMemo(() => overlayCollections(props), [props]);
-  const latestRef = useRef<{ collections: OverlayCollections; region: Region; onRegionSelect?: (regionId: RegionId) => void; onViewportChange?: SituationRealGlobeProps['onViewportChange'] }>({
+  const latestRef = useRef<{ collections: OverlayCollections; region: Region; onRegionSelect?: (regionId: RegionId) => void; onViewportChange?: SituationRealGlobeProps['onViewportChange']; showAirspace?: boolean }>({
     collections,
     region: props.region,
     onRegionSelect: props.onRegionSelect,
     onViewportChange: props.onViewportChange,
+    showAirspace: props.showAirspace,
   });
 
   useEffect(() => {
-    latestRef.current = { collections, region: props.region, onRegionSelect: props.onRegionSelect, onViewportChange: props.onViewportChange };
-  }, [collections, props.onRegionSelect, props.onViewportChange, props.region]);
+    latestRef.current = { collections, region: props.region, onRegionSelect: props.onRegionSelect, onViewportChange: props.onViewportChange, showAirspace: props.showAirspace };
+  }, [collections, props.onRegionSelect, props.onViewportChange, props.region, props.showAirspace]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -635,6 +688,7 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
       });
       isLoadedRef.current = true;
       const latest = latestRef.current;
+      ensureAirspaceLayers(map, Boolean(latest.showAirspace));
       ensureOverlayLayers(map, latest.collections);
       bindPointPopup(map, () => latestRef.current.onRegionSelect);
       map.on('moveend', () => {
@@ -701,6 +755,13 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
       }
     };
   }, [props.focusTrack]);
+
+  // Toggle OpenAIP airspace layers.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoadedRef.current) return;
+    setAirspaceVisibility(map, Boolean(props.showAirspace));
+  }, [props.showAirspace]);
 
   return (
     <div className="situation-map-shell situation-map-shell--real-globe situation-real-globe-shell" role="img" aria-label={`${props.region.shortName} 실제 지도 3D 지구본`}>
