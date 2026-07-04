@@ -21,7 +21,8 @@ import { fetchTelegramPosts, type TelegramPost } from './lib/telegramApi';
 import { assessClaims, type AssessedClaim } from './lib/claimVerify';
 import { fetchNotam, type NotamRow } from './lib/notamApi';
 import { fetchSeismic, type SeismicEvent } from './lib/seismicApi';
-import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, ShipTrack, Track } from './lib/types';
+import { fetchSatelliteModels, propagateSatellites, type SatelliteModel } from './lib/satelliteApi';
+import type { AirspaceNotice, OsintItem, OsintMapEvent, RegionId, SatellitePass, ShipTrack, Track } from './lib/types';
 
 type AircraftTypeFilter = 'all' | 'military' | Track['platformType'];
 
@@ -199,6 +200,9 @@ function App() {
   const [showNotam, setShowNotam] = useState(true);
   const [showSeismic, setShowSeismic] = useState(false);
   const [seismicEvents, setSeismicEvents] = useState<SeismicEvent[]>([]);
+  const [showSatellites, setShowSatellites] = useState(false);
+  const [satellitePasses, setSatellitePasses] = useState<SatellitePass[]>([]);
+  const satelliteModelsRef = useRef<SatelliteModel[]>([]);
   const [liveOsint, setLiveOsint] = useState<OsintMapEvent[]>([]);
   const [liveNotam, setLiveNotam] = useState<AirspaceNotice[]>([]);
   const [telegramPosts, setTelegramPosts] = useState<TelegramPost[]>([]);
@@ -564,6 +568,30 @@ function App() {
     return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
   }, [showSeismic, viewport]);
 
+  // Live satellites: fetch the public Celestrak catalogue (TLEs) once, then re-propagate every
+  // few seconds with SGP4 on the client. Bulk view (~11k active objects incl. Starlink) — markers
+  // only (no per-satellite ground tracks/labels) to stay renderable. Gated on the 위성 toggle.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || !showSatellites) return undefined;
+    let cancelled = false;
+    const controller = new AbortController();
+    let timer = 0;
+    const tick = () => {
+      if (!cancelled) setSatellitePasses(propagateSatellites(satelliteModelsRef.current, new Date()));
+    };
+    const start = async () => {
+      if (satelliteModelsRef.current.length === 0) {
+        const models = await fetchSatelliteModels('active', controller.signal);
+        if (cancelled) return;
+        satelliteModelsRef.current = models;
+      }
+      tick();
+      timer = window.setInterval(tick, 3000);
+    };
+    void start();
+    return () => { cancelled = true; controller.abort(); if (timer) window.clearInterval(timer); };
+  }, [showSatellites]);
+
   // Live NOTAM circles (Neon /api/notam), by the current viewport bbox.
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.fetch !== 'function') return undefined;
@@ -589,7 +617,7 @@ function App() {
           ships={scenario.ships}
           zones={[]}
           referenceLines={[]}
-          satellites={[]}
+          satellites={showSatellites ? satellitePasses : []}
           airports={[]}
           airRoutes={[]}
           notices={scenario.notices}
@@ -636,6 +664,9 @@ function App() {
         </button>
         <button type="button" className={showSeismic ? 'is-active' : ''} onClick={() => setShowSeismic((s) => !s)} title="EMSC 얕은 진원(≤2km) 지진 = 폭발/타격 가능">
           폭발형 {showSeismic ? 'ON' : 'OFF'}
+        </button>
+        <button type="button" className={showSatellites ? 'is-active' : ''} onClick={() => setShowSatellites((s) => !s)} title="Celestrak TLE + SGP4 실시간 궤도 위치 (활성 위성 전체, Starlink 포함)">
+          위성 {showSatellites ? `ON · ${satellitePasses.length}` : 'OFF'}
         </button>
         <button type="button" className={showNotam ? 'is-active' : ''} onClick={() => setShowNotam((s) => !s)}>
           NOTAM {showNotam ? 'ON' : 'OFF'}
