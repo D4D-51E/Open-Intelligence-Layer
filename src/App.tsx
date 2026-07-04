@@ -505,6 +505,7 @@ function App() {
               {row.label}
             </span>
           ))}
+          <span className="globe-hud--legend__note">남한 KADIZ·P-73: ROK AIP · 그 외: OpenAIP</span>
         </div>
       ) : null}
 

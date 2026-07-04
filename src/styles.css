@@ -883,6 +883,15 @@ a.track-fusion-axis__cite { color: var(--accent); }
   flex: 0 0 auto;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
 }
+.globe-hud--legend__note {
+  margin-top: 3px;
+  padding-top: 5px;
+  border-top: 1px solid var(--line);
+  font-size: 9.5px;
+  color: var(--muted);
+  max-width: 190px;
+  line-height: 1.35;
+}
 
 .globe-hud--panel {
   top: 84px;

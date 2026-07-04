@@ -425,11 +425,36 @@ function ensureAirspaceLayers(map: MapLibreMap, visible: boolean) {
       paint: { 'line-color': airspaceColor, 'line-width': 1.2, 'line-opacity': 0.75 },
     });
   }
+
+  // Supplementary South Korean airspace (KADIZ, P-73) from the ROK AIP — OpenAIP carries no
+  // country=KR polygons. Static GeoJSON in public/data; coloured by the same `type` palette.
+  // No minzoom: KADIZ is a large boundary that should read even when zoomed out.
+  if (!map.getSource('kr-airspace')) {
+    map.addSource('kr-airspace', { type: 'geojson', data: `${window.location.origin}/data/kr-airspace.json` });
+  }
+  if (!map.getLayer('kr-airspace-fill')) {
+    map.addLayer({
+      id: 'kr-airspace-fill',
+      type: 'fill',
+      source: 'kr-airspace',
+      layout: { visibility },
+      paint: { 'fill-color': airspaceColor, 'fill-opacity': 0.14 },
+    });
+  }
+  if (!map.getLayer('kr-airspace-line')) {
+    map.addLayer({
+      id: 'kr-airspace-line',
+      type: 'line',
+      source: 'kr-airspace',
+      layout: { visibility, 'line-join': 'round' },
+      paint: { 'line-color': airspaceColor, 'line-width': 1.4, 'line-opacity': 0.85 },
+    });
+  }
 }
 
 function setAirspaceVisibility(map: MapLibreMap, visible: boolean) {
   const visibility = visible ? 'visible' : 'none';
-  for (const id of ['openaip-airspace-fill', 'openaip-airspace-line']) {
+  for (const id of ['openaip-airspace-fill', 'openaip-airspace-line', 'kr-airspace-fill', 'kr-airspace-line']) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility);
   }
 }
