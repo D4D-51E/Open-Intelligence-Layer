@@ -1,9 +1,10 @@
-import { Clock, ExternalLink, Layers, Plane, Radio, ShieldAlert } from 'lucide-react';
+import { Clock, ExternalLink, Layers, Plane, Radio, ShieldAlert, Ship } from 'lucide-react';
 import { useState } from 'react';
-import type { Citation, FusionEvent, TimelineEvent, Track } from '../lib/types';
+import type { Citation, FusionEvent, ShipTrack, TimelineEvent, Track } from '../lib/types';
 import type { TrackFusionAxis, TrackFusionContext } from '../lib/trackFusion';
 import type { AircraftIdentity } from '../lib/aircraftIdentity';
 import type { AirspaceKind, AirspaceMatch } from '../lib/noticeAirspace';
+import { vesselTypeLabel } from '../lib/display';
 import { safeExternalUrl } from '../lib/safeLinks';
 import { Timeline } from './Timeline';
 
@@ -20,6 +21,7 @@ type LiveTrackPanelProps = {
   militaryCount: number;
   identity: AircraftIdentity | null;
   activeAirspace: AirspaceMatch[];
+  ships: ShipTrack[];
 };
 
 const airspaceKindLabels: Record<AirspaceKind, string> = {
@@ -261,6 +263,43 @@ function TrackTable({ tracks, selectedTrackId, onSelectTrack }: Pick<LiveTrackPa
   );
 }
 
+function ShipTable({ ships }: { ships: ShipTrack[] }) {
+  if (ships.length === 0) {
+    return <p className="live-track-empty">현재 뷰포트에 표시된 선박(AIS)이 없습니다. 합성 데이터는 만들지 않습니다.</p>;
+  }
+  const sorted = [...ships].sort((a, b) => {
+    const ta = Date.parse(a.points.at(-1)?.observedAt ?? '') || 0;
+    const tb = Date.parse(b.points.at(-1)?.observedAt ?? '') || 0;
+    return tb - ta;
+  });
+  return (
+    <div className="live-track-table live-track-table--ships" role="table" aria-label="실시간 선박 목록">
+      <div className="live-track-table__head" role="row">
+        <span role="columnheader">선박</span>
+        <span role="columnheader">유형</span>
+        <span role="columnheader">속도</span>
+        <span role="columnheader">최신성</span>
+      </div>
+      <div className="live-track-table__body">
+        {sorted.map((ship) => {
+          const last = ship.points.at(-1);
+          return (
+            <div key={ship.id} role="row" className="live-track-row live-track-row--ship">
+              <span className="live-track-row__callsign" role="cell">
+                <Ship size={13} aria-label="AIS 선박" />
+                {ship.name}
+              </span>
+              <span role="cell">{vesselTypeLabel(ship.vesselType)}</span>
+              <span role="cell">{last ? `${last.speedKnots}kn` : '-'}</span>
+              <span role="cell">{freshnessLabel(last?.observedAt)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TrackFusionCard({ context }: { context: TrackFusionContext | null }) {
   if (!context) {
     return <p className="track-fusion-empty">항적을 선택하면 궤도·기상·공역·OSINT 융합 컨텍스트를 표시합니다.</p>;
@@ -324,6 +363,7 @@ export function LiveTrackPanel({
   militaryCount,
   identity,
   activeAirspace,
+  ships,
 }: LiveTrackPanelProps) {
   const [tab, setTab] = useState<LiveTrackTab>('tracks');
   const selectedTrack = tracks.find((track) => track.id === selectedTrackId);
@@ -367,6 +407,11 @@ export function LiveTrackPanel({
               {militaryCount > 0 ? <span className="pill pill--military"><ShieldAlert size={12} /> 군용 {militaryCount}기</span> : null}
             </div>
             <TrackTable tracks={tracks} selectedTrackId={selectedTrackId} onSelectTrack={onSelectTrack} />
+            <div className="live-track-pane__head live-track-pane__head--sub">
+              <p className="eyebrow"><Ship size={12} /> Live Vessels · AIS</p>
+              {ships.length > 0 ? <span className="pill">{ships.length}척</span> : null}
+            </div>
+            <ShipTable ships={ships} />
             <AircraftIdentityCard identity={identity} track={selectedTrack} activeAirspace={activeAirspace} />
             <TrackFusionCard context={fusionContext} />
           </div>

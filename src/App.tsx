@@ -521,6 +521,7 @@ function App() {
           militaryCount={militaryCount}
           identity={aircraftIdentity}
           activeAirspace={activeAirspace}
+          ships={scenario.ships}
         />
       </aside>
 

@@ -630,6 +630,34 @@ body {
   color: var(--danger);
 }
 
+/* AIS vessel table: four columns (선박·유형·속도·최신성), non-interactive rows. */
+.live-track-table--ships {
+  margin-top: 8px;
+}
+.live-track-table--ships .live-track-table__head,
+.live-track-table--ships .live-track-row {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, .8fr) minmax(0, .9fr);
+}
+.live-track-row--ship {
+  cursor: default;
+}
+.live-track-row--ship:hover {
+  background: transparent;
+}
+.live-track-row--ship .live-track-row__callsign svg {
+  color: #67e8f9;
+}
+.live-track-pane__head--sub {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.live-track-pane__head--sub .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .live-track-badge {
   margin-left: 6px;
   padding: 1px 6px;

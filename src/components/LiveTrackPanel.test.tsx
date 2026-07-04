@@ -5,7 +5,7 @@ import { LiveTrackPanel } from './LiveTrackPanel';
 import type { TrackFusionContext } from '../lib/trackFusion';
 import type { AircraftIdentity } from '../lib/aircraftIdentity';
 import type { AirspaceMatch } from '../lib/noticeAirspace';
-import type { Track } from '../lib/types';
+import type { ShipTrack, Track } from '../lib/types';
 
 const OBSERVED_AT = '2026-07-04T00:00:00.000Z';
 
@@ -20,6 +20,15 @@ const commercialTrack: Track = {
 };
 
 const militaryTrack: Track = { ...commercialTrack, id: 'trk-m', callsign: 'MIL77', isMilitary: true };
+
+const cargoShip: ShipTrack = {
+  id: 'ais-440123456',
+  source: 'ais-cache',
+  name: 'HANARO',
+  mmsi: '440123456',
+  vesselType: 'cargo',
+  points: [{ lat: 37.4, lon: 126.5, speedKnots: 12.3, courseDeg: 210, observedAt: OBSERVED_AT }],
+};
 
 const fusionContext: TrackFusionContext = {
   trackId: 'trk-m',
@@ -46,6 +55,7 @@ function renderPanel(overrides: Partial<Parameters<typeof LiveTrackPanel>[0]> = 
       militaryCount={1}
       identity={null}
       activeAirspace={[]}
+      ships={[]}
       {...overrides}
     />,
   );
@@ -82,6 +92,21 @@ describe('LiveTrackPanel', () => {
     renderPanel({ tracks: [], militaryCount: 0 });
 
     expect(screen.getByText(/노출된 실시간 항적이 없습니다/)).toBeInTheDocument();
+  });
+
+  it('renders the AIS vessel list below the tracks', () => {
+    renderPanel({ ships: [cargoShip] });
+
+    expect(screen.getByText(/Live Vessels/)).toBeInTheDocument();
+    expect(screen.getByText('HANARO')).toBeInTheDocument();
+    expect(screen.getByText('화물선')).toBeInTheDocument();
+    expect(screen.getByText('12.3kn')).toBeInTheDocument();
+  });
+
+  it('shows a vessel empty state when there are no ships', () => {
+    renderPanel({ ships: [] });
+
+    expect(screen.getByText(/표시된 선박\(AIS\)이 없습니다/)).toBeInTheDocument();
   });
 
   it('renders the aircraft identity card and active airspace for the selected track', () => {
