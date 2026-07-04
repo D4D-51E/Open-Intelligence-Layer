@@ -21,8 +21,10 @@ type SituationRealGlobeProps = {
   osintEvents: OsintMapEvent[];
   anomalies: Anomaly[];
   onViewportChange?: (viewport: { bbox: [number, number, number, number]; zoom: number; center: [number, number] }) => void;
-  focusTrack?: { lat: number; lon: number; html: string } | null;
+  focusTrack?: { id: string; lat: number; lon: number; html: string } | null;
   onFocusClose?: () => void;
+  onSelectTrack?: (trackId: string) => void;
+  onSelectShip?: (shipId: string) => void;
   showAirspace?: boolean;
 };
 
@@ -159,6 +161,7 @@ function overlayCollections(props: SituationRealGlobeProps): OverlayCollections 
       kind: 'track',
       title,
       severity,
+      trackId: track.id,
       altitudeM: last.altitudeM,
       speedMs: last.velocityMs,
       heading: last.headingDeg,
@@ -265,10 +268,12 @@ function popupHtml(properties: Properties) {
   `;
 }
 
-function bindPointPopup(map: MapLibreMap, getRegionSelect: () => SituationRealGlobeProps['onRegionSelect']) {
+type PopupCallbacks = Pick<SituationRealGlobeProps, 'onRegionSelect' | 'onSelectTrack' | 'onSelectShip'>;
+
+function bindPointPopup(map: MapLibreMap, getCallbacks: () => PopupCallbacks) {
   const selectRegionFromProperties = (properties: Properties) => {
     if ((properties.kind === 'region-switch' || properties.kind === 'region-switch-label') && typeof properties.targetRegionId === 'string') {
-      getRegionSelect()?.(properties.targetRegionId as RegionId);
+      getCallbacks().onRegionSelect?.(properties.targetRegionId as RegionId);
       return true;
     }
     return false;
@@ -294,6 +299,11 @@ function bindPointPopup(map: MapLibreMap, getRegionSelect: () => SituationRealGl
     const feature = features.find((item) => item.layer.id === 'airmaven-points');
     if (!feature?.properties) return;
     const properties = feature.properties as Properties;
+    // Tracks and ships select into the parent so a map click gives the same rich focus
+    // popup + fly-to as choosing them from the side panel (not a basic map-only popup).
+    const cbs = getCallbacks();
+    if (properties.kind === 'track' && typeof properties.trackId === 'string') { cbs.onSelectTrack?.(properties.trackId); return; }
+    if (properties.kind === 'ship' && typeof properties.shipId === 'string') { cbs.onSelectShip?.(properties.shipId); return; }
     const coordinates = feature.geometry.type === 'Point'
       ? feature.geometry.coordinates as [number, number]
       : event.lngLat.toArray() as [number, number];
@@ -719,18 +729,21 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
   const mapRef = useRef<MapLibreMap | null>(null);
   const isLoadedRef = useRef(false);
   const focusPopupRef = useRef<maplibregl.Popup | null>(null);
+  const focusedIdRef = useRef<string | null>(null);
   const collections = useMemo(() => overlayCollections(props), [props]);
-  const latestRef = useRef<{ collections: OverlayCollections; region: Region; onRegionSelect?: (regionId: RegionId) => void; onViewportChange?: SituationRealGlobeProps['onViewportChange']; showAirspace?: boolean }>({
+  const latestRef = useRef<{ collections: OverlayCollections; region: Region; onRegionSelect?: (regionId: RegionId) => void; onSelectTrack?: (trackId: string) => void; onSelectShip?: (shipId: string) => void; onViewportChange?: SituationRealGlobeProps['onViewportChange']; showAirspace?: boolean }>({
     collections,
     region: props.region,
     onRegionSelect: props.onRegionSelect,
+    onSelectTrack: props.onSelectTrack,
+    onSelectShip: props.onSelectShip,
     onViewportChange: props.onViewportChange,
     showAirspace: props.showAirspace,
   });
 
   useEffect(() => {
-    latestRef.current = { collections, region: props.region, onRegionSelect: props.onRegionSelect, onViewportChange: props.onViewportChange, showAirspace: props.showAirspace };
-  }, [collections, props.onRegionSelect, props.onViewportChange, props.region, props.showAirspace]);
+    latestRef.current = { collections, region: props.region, onRegionSelect: props.onRegionSelect, onSelectTrack: props.onSelectTrack, onSelectShip: props.onSelectShip, onViewportChange: props.onViewportChange, showAirspace: props.showAirspace };
+  }, [collections, props.onRegionSelect, props.onSelectTrack, props.onSelectShip, props.onViewportChange, props.region, props.showAirspace]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -766,7 +779,7 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
       const latest = latestRef.current;
       ensureAirspaceLayers(map, Boolean(latest.showAirspace));
       ensureOverlayLayers(map, latest.collections);
-      bindPointPopup(map, () => latestRef.current.onRegionSelect);
+      bindPointPopup(map, () => latestRef.current);
       map.on('moveend', () => {
         const onViewport = latestRef.current.onViewportChange;
         if (!onViewport) return;
@@ -804,32 +817,35 @@ export function SituationRealGlobe(props: SituationRealGlobeProps) {
     updateSources(map, collections);
   }, [collections]);
 
-  // Clicking a track flies the globe to it and opens a popup with identity/fusion context.
+  // Selecting a track/ship (from the panel OR a map click) opens a popup with fusion context.
+  // Fly-to happens ONLY when the selection id changes — on the periodic data refresh we just
+  // move/refresh the existing popup in place, so the camera never snaps back and the user can
+  // freely pan/zoom the globe while a popup is open.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !isLoadedRef.current) return undefined;
-    if (focusPopupRef.current) {
-      focusPopupRef.current.remove();
-      focusPopupRef.current = null;
-    }
+    if (!map || !isLoadedRef.current) return;
     const focus = props.focusTrack;
-    if (!focus) return undefined;
-    map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), 8.5), duration: 900, essential: true });
-    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '340px', className: 'globe-track-popup' })
-      .setLngLat([focus.lon, focus.lat])
-      .setHTML(focus.html)
-      .addTo(map);
-    focusPopupRef.current = popup;
-    // The user clicking the popup's × fires 'close' — clear the selection in the parent so
-    // the popup does not immediately reopen on the next track-poll re-render. Detach the
-    // listener before the programmatic remove() in cleanup so re-renders don't clear it.
-    const handleUserClose = () => props.onFocusClose?.();
-    popup.on('close', handleUserClose);
-    return () => {
-      popup.off('close', handleUserClose);
-      popup.remove();
-      focusPopupRef.current = null;
-    };
+    if (!focus) {
+      if (focusPopupRef.current) { focusPopupRef.current.remove(); focusPopupRef.current = null; }
+      focusedIdRef.current = null;
+      return;
+    }
+    if (focus.id !== focusedIdRef.current) {
+      focusedIdRef.current = focus.id;
+      map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), 8.5), duration: 900, essential: true });
+    }
+    if (focusPopupRef.current) {
+      focusPopupRef.current.setLngLat([focus.lon, focus.lat]).setHTML(focus.html);
+    } else {
+      const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '340px', className: 'globe-track-popup' })
+        .setLngLat([focus.lon, focus.lat])
+        .setHTML(focus.html)
+        .addTo(map);
+      // The user clicking × clears the selection in the parent (so it doesn't reopen on the
+      // next refresh). Only the focus=null branch above ever removes the popup programmatically.
+      popup.on('close', () => props.onFocusClose?.());
+      focusPopupRef.current = popup;
+    }
   }, [props.focusTrack, props.onFocusClose]);
 
   // Toggle OpenAIP airspace layers.

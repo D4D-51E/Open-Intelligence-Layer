@@ -180,6 +180,7 @@ function App() {
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [viewportTracks, setViewportTracks] = useState<Track[]>([]);
   const [liveVessels, setLiveVessels] = useState<ShipTrack[]>([]);
+  const [viewportCountry, setViewportCountry] = useState<string | null>(null);
   const [trackLoadState, setTrackLoadState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [trackLastErrorAt, setTrackLastErrorAt] = useState<string | null>(null);
   const [selectedTrackId, setSelectedTrackId] = useState<string | undefined>();
@@ -267,11 +268,11 @@ function App() {
   const focusTrack = useMemo(() => {
     const shipLast = selectedShip?.points.at(-1);
     if (selectedShip && shipLast) {
-      return { lat: shipLast.lat, lon: shipLast.lon, html: buildShipPopupHtml(selectedShip) };
+      return { id: selectedShip.id, lat: shipLast.lat, lon: shipLast.lon, html: buildShipPopupHtml(selectedShip) };
     }
     const last = selectedTrack?.points.at(-1);
     if (!selectedTrack || !last) return null;
-    return { lat: last.lat, lon: last.lon, html: buildTrackPopupHtml(selectedTrack, aircraftIdentity, fusionContext) };
+    return { id: selectedTrack.id, lat: last.lat, lon: last.lon, html: buildTrackPopupHtml(selectedTrack, aircraftIdentity, fusionContext) };
   }, [aircraftIdentity, fusionContext, selectedShip, selectedTrack]);
 
   const militaryCount = useMemo(() => scenario.tracks.filter((t) => t.isMilitary).length, [scenario.tracks]);
@@ -390,6 +391,30 @@ function App() {
     return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
   }, [timelineMode, viewport]);
 
+  // Reverse-geocode the viewport centre to a country name (BigDataCloud keyless client API),
+  // debounced, so the panel reads "<현재 보고 있는 나라> 상공" instead of a fixed AOI label.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || !viewport) return undefined;
+    const [lat, lon] = viewport.center;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&localityLanguage=ko`,
+            { signal: controller.signal },
+          );
+          if (!res.ok) return;
+          const data = await res.json() as { countryName?: string };
+          setViewportCountry(data.countryName?.trim() || null);
+        } catch {
+          // keep the previous value on failure / open ocean
+        }
+      })();
+    }, 700);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [viewport]);
+
   // Timeline history fetch (Neon /api/history) when scrubbing.
   useEffect(() => {
     if (!timelineMode || typeof window === 'undefined') return undefined;
@@ -471,6 +496,8 @@ function App() {
           onViewportChange={handleViewportChange}
           focusTrack={focusTrack}
           onFocusClose={handleFocusClose}
+          onSelectTrack={handleSelectTrack}
+          onSelectShip={handleSelectShip}
           showAirspace={showAirspace}
         />
       </div>
@@ -540,7 +567,7 @@ function App() {
 
       <aside className="globe-hud globe-hud--panel">
         <LiveTrackPanel
-          regionName={scenario.region.shortName}
+          regionName={viewportCountry ? `${viewportCountry} 상공` : scenario.region.shortName}
           tracks={scenario.tracks}
           selectedTrackId={selectedTrackId}
           onSelectTrack={handleSelectTrack}
