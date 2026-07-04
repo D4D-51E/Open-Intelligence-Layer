@@ -14,7 +14,9 @@ import { defaultRegionId, regions } from './lib/regions';
 import { fetchAdsbLolGlobalMilitary, fetchAdsbLolViewportTracks } from './lib/adsbLolApi';
 import { fetchStrategyForZoom, viewportRadiusNm, type Viewport } from './lib/viewport';
 import { fetchHistoryTracks } from './lib/historyApi';
-import type { RegionId, Track } from './lib/types';
+import { fetchOsint, type OsintRow } from './lib/osintApi';
+import { fetchNotam, type NotamRow } from './lib/notamApi';
+import type { AirspaceNotice, OsintMapEvent, RegionId, Track } from './lib/types';
 
 type AircraftTypeFilter = 'all' | 'military' | Track['platformType'];
 
@@ -72,6 +74,41 @@ function historyRowToTrack(row: Awaited<ReturnType<typeof fetchHistoryTracks>>[n
   };
 }
 
+function osintRowToEvent(row: OsintRow, index: number): OsintMapEvent | null {
+  if (row.lat == null || row.lon == null) return null;
+  return {
+    id: `osint-live-${index}-${row.observed_at}`,
+    regionId: (row.region_id || 'global') as RegionId,
+    source: 'gdelt-cache',
+    title: row.title,
+    lat: row.lat,
+    lon: row.lon,
+    observedAt: row.observed_at,
+    confidence: row.tier === 'authoritative' ? 0.82 : 0.6,
+    relatedOsintId: '',
+    url: row.url ?? undefined,
+    tags: [row.source, row.tier],
+  };
+}
+
+function notamRowToNotice(row: NotamRow, index: number): AirspaceNotice {
+  const fl = row.fl_min != null || row.fl_max != null ? ` FL${row.fl_min ?? '?'}–${row.fl_max ?? '?'}` : '';
+  return {
+    id: `notam-live-${row.notam_number ?? index}-${index}`,
+    regionId: 'global' as RegionId,
+    source: 'icao-notam-cache',
+    title: `${row.icao ?? ''} ${row.feature ?? 'NOTAM'} ${row.notam_number ?? ''}`.trim(),
+    description: `${row.feature ?? 'NOTAM'}${fl}`,
+    publishedAt: row.observed_at,
+    effectiveFrom: row.start_at ?? undefined,
+    effectiveTo: row.end_at ?? undefined,
+    lat: row.lat,
+    lon: row.lon,
+    radiusKm: row.radius_km ?? 5,
+    severity: 'watch',
+  };
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
 }
@@ -108,6 +145,10 @@ function App() {
   const [aircraftTypeFilter, setAircraftTypeFilter] = useState<AircraftTypeFilter>('all');
   const [minimumAltitudeM, setMinimumAltitudeM] = useState(0);
   const [showAirspace, setShowAirspace] = useState(true);
+  const [showOsint, setShowOsint] = useState(true);
+  const [showNotam, setShowNotam] = useState(true);
+  const [liveOsint, setLiveOsint] = useState<OsintMapEvent[]>([]);
+  const [liveNotam, setLiveNotam] = useState<AirspaceNotice[]>([]);
   const [timelineMode, setTimelineMode] = useState(false);
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const [timelineValue, setTimelineValue] = useState(() => Date.now());
@@ -137,10 +178,15 @@ function App() {
   }, [baseScenario, filteredTracks, liveCache, regionId]);
   const anomalies = useMemo(() => detectAnomalies(mergedScenario), [mergedScenario]);
   const scenario = useMemo(() => {
-    const fusionEvents = buildFusionEvents(mergedScenario, anomalies);
-    const withFusion = { ...mergedScenario, fusionEvents };
+    const withLive = {
+      ...mergedScenario,
+      osintEvents: showOsint ? liveOsint : [],
+      notices: showNotam ? liveNotam : [],
+    };
+    const fusionEvents = buildFusionEvents(withLive, anomalies);
+    const withFusion = { ...withLive, fusionEvents };
     return { ...withFusion, timeline: buildTimelineFromScenario(withFusion) };
-  }, [anomalies, mergedScenario]);
+  }, [anomalies, liveNotam, liveOsint, mergedScenario, showNotam, showOsint]);
 
   const selectedTrack = useMemo(() => scenario.tracks.find((t) => t.id === selectedTrackId), [scenario.tracks, selectedTrackId]);
   const fusionContext = useMemo(
@@ -275,6 +321,34 @@ function App() {
     return () => window.clearInterval(timer);
   }, [timelineMode, timelinePlaying]);
 
+  // Live OSINT feed (Neon /api/osint), refreshed periodically.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function') return undefined;
+    let cancelled = false;
+    const controller = new AbortController();
+    const load = async () => {
+      const rows = await fetchOsint({ limit: 400, signal: controller.signal });
+      if (!cancelled) setLiveOsint(rows.map(osintRowToEvent).filter((event): event is OsintMapEvent => event !== null));
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 5 * 60 * 1000);
+    return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
+  }, []);
+
+  // Live NOTAM circles (Neon /api/notam), by the current viewport bbox.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function') return undefined;
+    let cancelled = false;
+    const controller = new AbortController();
+    const load = async () => {
+      const rows = await fetchNotam({ bbox: viewportRef.current?.bbox, limit: 500, signal: controller.signal });
+      if (!cancelled) setLiveNotam(rows.map(notamRowToNotice));
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 5 * 60 * 1000);
+    return () => { cancelled = true; controller.abort(); window.clearInterval(timer); };
+  }, [viewport]);
+
   const zoomModeLabel = strategy === 'global-mil' ? '전세계 군용' : '뷰포트 상세';
   const trackStatusLabel = trackLoadState === 'ready' ? '수신' : trackLoadState === 'unavailable' ? '사용 불가' : '수집 중';
 
@@ -327,6 +401,12 @@ function App() {
         </label>
         <button type="button" className={showAirspace ? 'is-active' : ''} onClick={() => setShowAirspace((s) => !s)}>
           공역 {showAirspace ? 'ON' : 'OFF'}
+        </button>
+        <button type="button" className={showOsint ? 'is-active' : ''} onClick={() => setShowOsint((s) => !s)}>
+          OSINT {showOsint ? 'ON' : 'OFF'}
+        </button>
+        <button type="button" className={showNotam ? 'is-active' : ''} onClick={() => setShowNotam((s) => !s)}>
+          NOTAM {showNotam ? 'ON' : 'OFF'}
         </button>
         <button
           type="button"

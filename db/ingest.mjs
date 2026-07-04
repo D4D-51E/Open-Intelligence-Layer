@@ -2,6 +2,9 @@
 // and api/cron/record.mjs (Vercel Cron). Fetches live public sources server-side and
 // appends time-series rows to Neon.
 
+import { collectOsint } from './osintIngest.mjs';
+import { collectNotam } from './notamIngest.mjs';
+
 const ADSB_BASE = 'https://api.adsb.lol/v2';
 const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
 
@@ -199,10 +202,27 @@ export async function recordAllObservations(sql, { paceMs = 2000, log } = {}) {
     await sleep(paceMs);
     regionResults.push(await recordRegion(sql, region, mil, log));
   }
+
+  // OSINT (GDELT + curated RSS) and NOTAM (FAA) collectors.
+  let osint = { inserted: 0 };
+  let notam = { inserted: 0 };
+  try {
+    osint = await collectOsint(sql, { log });
+  } catch (error) {
+    log?.(`osint failed: ${String(error)}`);
+  }
+  try {
+    notam = await collectNotam(sql, { log });
+  } catch (error) {
+    log?.(`notam failed: ${String(error)}`);
+  }
+
   return {
     militaryFeed: mil.aircraft.length,
     totalTracks: regionResults.reduce((sum, r) => sum + r.tracks, 0),
     totalWeather: regionResults.reduce((sum, r) => sum + r.weather, 0),
+    osint: osint.inserted ?? 0,
+    notam: notam.inserted ?? 0,
     regions: regionResults,
   };
 }
