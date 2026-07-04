@@ -1,8 +1,4 @@
-import type { Briefing, LiveSourceStatus, SatellitePass, ShipTrack, TimelineEvent, Track } from './types';
-
-export function generatedByLabel(value: Briefing['generatedBy']) {
-  return value === 'openai-precomputed' ? 'OpenAI 사전 생성' : '규칙 기반 템플릿';
-}
+import type { LiveSourceStatus, SatellitePass, ShipTrack, TimelineEvent, Track } from './types';
 
 export function eventTypeLabel(value: TimelineEvent['type']) {
   const labels: Record<TimelineEvent['type'], string> = {

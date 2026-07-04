@@ -290,16 +290,6 @@ export type FusionEvent = {
   safetyNote: string;
 };
 
-export type Briefing = {
-  headline: string;
-  situationSummary: string;
-  keyFindings: string[];
-  recommendedNextChecks: string[];
-  caveats: string[];
-  citations: Citation[];
-  generatedBy: 'deterministic-template' | 'openai-precomputed';
-};
-
 export type Scenario = {
   region: Region;
   tracks: Track[];

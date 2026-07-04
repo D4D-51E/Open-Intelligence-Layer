@@ -1,375 +1,150 @@
 # AirMaven
 
-D4D T2 **Real-time Air/Space Track & Multi-source Fusion** hackathon prototype.
+D4D T2 **실시간 글로벌 항적 + 다중소스 융합 3D 글로브** 해커톤 프로토타입.
 
-AirMaven exposes live public ADS-B air tracks and fuses them with orbital, weather, and OSINT context on the same AOI. It surfaces real-time tracks (with public military-flag emphasis), builds a per-track fusion context (weather / satellite pass / FIR-airspace / OSINT / anomaly), and an AOI-level fusion summary for analyst review.
+AirMaven은 공개 ADS-B 항적을 전세계 단위로 실시간 노출하고, 같은 화면에서 기상 · 공역(NOTAM/OpenAIP) · OSINT 뉴스 신호를 겹쳐 보여주는 풀스크린 3D 글로브 앱이다. 줌 아웃하면 전세계 군용기 피드, 줌 인하면 뷰포트 단위 상세 항적으로 자동 전환되고, 선택한 항적에는 기상 · 위성 · 공역 · OSINT · 이상탐지 축을 결합한 융합 컨텍스트가 표시된다.
 
-> Safety boundary: this is **analyst decision-support only**. The military marker is public ADS-B flag exposure, not identification. It does not perform target designation, strike recommendation, weapon selection, or automated engagement logic.
+> Safety boundary: this is **analyst decision-support only**. The military marker is public ADS-B flag exposure, not identification. It does not perform target designation, strike recommendation, weapon selection, or automated engagement logic. Only public/open data is used — nothing here is synthesized or fabricated, and no data is scoped to track or target a specific individual.
 
-## Features
+## UX — 풀스크린 글로브
 
-- Default **Ops 4-up dashboard**:
-  - preserved dark HUD style and Leaflet situation map/globe-oriented operating picture
-  - **live track panel** (hero): real-time ADS-B track table with public military-flag emphasis, altitude/speed/type filters, and per-track fusion context on selection
-  - AOI-level **fusion summary** (read-only) and **event timeline** tabs
-  - terminal-style ingest log for browser cache polling
-- Optional **Narrative · scroll report** mode with the live track panel plus the multi-source integration matrix.
-- Track + fusion data model:
-  - `Track` (with `isMilitary` public ADS-B flag), `SatellitePass`, `WeatherSnapshot`, `AirspaceContext`, `OsintItem`/`OsintMapEvent`, `Anomaly`
-  - per-track fusion axes: weather / satellite / airspace(FIR+NOTAM) / OSINT / anomaly
-  - AOI fusion events with `confidenceFactors` (source reliability / freshness / cross-source agreement / missing-data penalty)
-- AOI preset selector: Global, 대만해협, 수도권 상공, 남중국해, 서해/NLL 인근.
+- 화면 전체를 차지하는 MapLibre GL 3D 글로브(`SituationRealGlobe`)가 기본이자 유일한 뷰. 과거의 4분할 ops 대시보드(`?view=ops`)와 스크롤형 narrative 리포트 모드는 제거되었다.
+- HUD 오버레이: 좌상단에 항적 수 · 군용기 수 · adsb.lol 수신 상태, 우상단에 유형/고도 필터와 공역·OSINT·NOTAM·타임라인 토글, 우측 패널에 선택 항적의 융합 컨텍스트와 이벤트 타임라인.
+- 줌 레벨에 따라 자동으로 전환되는 두 조회 전략(`fetchStrategyForZoom`):
+  - **줌 아웃**: adsb.lol `/v2/mil` 전세계 군용기 피드.
+  - **줌 인**: 현재 뷰포트 bbox 기준 point 조회(`adsb.lol` 반경 질의).
+- **타임라인 모드**: 켜면 실시간 폴링 대신 Neon에 기록된 과거 관측치(`/api/history`)를 스크러버로 재생.
+- **공역 레이어**: OpenAIP 벡터 타일(줌 ≥5에서만 로드) + 실시간 NOTAM 서클.
 
-### Real-time track exposure (`airplanesLiveApi.ts`)
+## 데이터 경로 (두 개, 둘 다 동작 중)
 
-- Browser polls **Airplanes.live** `/point/{lat}/{lon}/{radius}` and **adsb.lol** (`/v2/lat/{lat}/lon/{lon}/dist/{nm}` regional feed **plus the `/v2/mil` global military-only feed intersected with the AOI**) per AOI, and merges them with the server-side **OpenSky** cache. Records are **deduped across all three ADS-B sources by ICAO24 hex** (richest history wins, military flag preserved). The shared readsb-JSON normalizer lives in `adsbCommon.ts`; both `airplanesLiveApi.ts` and `adsbLolApi.ts` build on it. adsb.lol is free and needs no key. **adsb.lol sends no CORS header**, so the browser cannot call it directly — it is proxied **same-origin** through `/adsb-lol/*` (Vite dev/preview `server.proxy` + a Vercel `rewrites` rule), which is why `adsbLolApi.ts` uses the base path `/adsb-lol/v2`. (Airplanes.live sends `access-control-allow-origin: *`, so it is called directly.)
-- Public military aircraft (`dbFlags & 1`) are preserved as `Track.isMilitary` and emphasized in the metric badge, the track table row, and the `군용` type filter.
-- Military marking is **public ADS-B flag exposure only** — not identification, not target designation.
-- Tracks render as **heading-rotated airplane icons** on both the default MapLibre globe (`SituationRealGlobe`, SDF symbol layer with `icon-rotate`) and the Leaflet map (`SituationMap`, rotated SVG); military tracks are tinted red.
+**1) baseline — 정적 스냅샷 융합**
 
-### Aircraft identification (`aircraftIdentity.ts`, heuristic)
+```
+scripts/fetch-live-data.mjs → public/data/live-scenarios.json → src/lib/baselineData.getScenario → trackFusion / fusion
+```
 
-Selecting a track builds a read-only **identity card** from public data only. Every field is a naming-convention/allocation heuristic, never an authoritative lookup:
+OpenSky, CelesTrak, Copernicus STAC, NASA FIRMS, Open-Meteo, OurAirports, ICAO FIR, AISStream, ICAO/SkyLink NOTAM 등 다수의 공개 API를 폴링해 스냅샷 JSON을 만들고, 이를 트랙별 융합 컨텍스트(`trackFusion.ts`)와 AOI 융합 이벤트(`fusion.ts`)의 기반 데이터로 사용한다. 이 스냅샷은 위성/위성패스/기상/공역(FIR)/구형 OSINT 축의 원천이다.
 
-- **Operator resolution (data-driven)** — the ICAO 3-letter callsign prefix (e.g. `RCH431`→`RCH`) is looked up in a **community operator dataset** (Mictronics readsb, ~5,500 operators) fetched by `scripts/fetch-callsign-db.mjs` into `public/data/aircraft-operators.json`. The military flag is derived from the operator name at ingest time (keyword classifier), not hand-authored per callsign. Registrations and dynamic tactical callsigns (e.g. `DRAGON`) that are not registered operator prefixes resolve to no operator rather than a guessed mapping — `militaryLikely` still comes from `dbFlags`/ICAO24 mil-block. A small built-in prefix table is kept only as an offline fallback.
-- **ICAO24 → registration country** — 24-bit address allocation-block table (offline), with a US/allied military sub-block hint.
-- **Operator candidates** — combined from callsign, ICAO24 block, and the `dbFlags` military flag.
-- **Type candidate** — from the ADS-B-broadcast type code (`t`) via a small ICAO-designator map; unknown codes fall back to the raw code.
-- **Session observation history** — first-seen time, point count, and duration accumulated in this session (not a cross-day archive).
+**2) 라이브 피벗 — 글로브에 직접 주입되는 실시간 레이어**
 
-### Active airspace matching (`noticeAirspace.ts`, NOTAM-based)
+- 항적: 브라우저가 줌 레벨에 따라 adsb.lol 전세계 군용 또는 뷰포트 point 조회를 직접 폴링(`src/lib/adsbLolApi.ts`).
+- 관측 이력: Neon 관측 저장소 타임라인(`/api/history`).
+- OSINT: GDELT + 엄선된 국방/국제 RSS 피드가 Neon에 적재되고 `/api/osint`로 조회.
+- NOTAM: FAA `notamSearch` 공개 엔드포인트가 Neon에 적재되고 `/api/notam`으로 조회.
+- 공역 폴리곤: OpenAIP 벡터 타일(`/api/openaip/{z}/{x}/{y}`, 줌 ≥5).
 
-`matchActiveAirspace(point, notices, at)` classifies SkyLink/ICAO NOTAMs into airspace kinds (MOA / TRA / Danger / Restricted / Prohibited / TSA / CTR) and parses flight-level bands, then flags when a selected track is inside an **active** NOTAM's radius (and whether its altitude falls in the band). This covers NOTAM-announced *active* airspace; standing charted special-use-airspace polygons would need a separate dataset (OpenAIP/FAA SUA) and are out of scope.
+두 경로는 서로를 대체하지 않는다 — baseline 스냅샷이 기상/위성/FIR/구형 OSINT 축을 채우고, 라이브 피벗이 화면에 보이는 항적·OSINT·NOTAM을 실시간으로 덮어쓴다(`App.tsx`의 `mergeLiveScenario`/`scenario` 조립 로직 참고).
 
-### Per-track fusion context (`trackFusion.ts`)
+## 데이터 소스 & API
 
-`buildTrackFusionContext(track, scenario, anomalies)` combines only real public data on the selected track's latest position/time. Empty axes are reported as gaps, never synthesized:
+| 레이어 | 소스 | 경로 |
+|---|---|---|
+| 전세계 군용 항적 | adsb.lol `/v2/mil` | 브라우저 직접 폴링(줌 아웃), 서버 측 기록(Neon) |
+| 뷰포트 상세 항적 | adsb.lol `/v2/lat/{lat}/lon/{lon}/dist/{nm}` | 브라우저 직접 폴링(줌 인), Vite/Vercel same-origin `/adsb-lol/*` 프록시 경유(CORS 회피) |
+| 항적(baseline) | OpenSky Network `/states/all` | `scripts/fetch-live-data.mjs` → `live-scenarios.json` |
+| 기상 | Open-Meteo | baseline 스냅샷 + 서버 측 기록(Neon `weather_observations`) |
+| 위성/궤도 | CelesTrak GP(`GROUP=stations`) + satellite.js | baseline 스냅샷 |
+| 위성 장면 메타데이터 | Copernicus Data Space STAC `/v1/search` | baseline 스냅샷 |
+| 열이상 탐지 | NASA FIRMS area CSV API | baseline 스냅샷(`NASA_FIRMS_MAP_KEY` 필요) |
+| 공항 컨텍스트 | OurAirports CSV | baseline 스냅샷 |
+| FIR 컨텍스트 | ICAO API Data Service `fir-by-location` | baseline 스냅샷 |
+| AIS 해상 | AISStream WebSocket | baseline 스냅샷(서버 측 전용, 키 필요) |
+| OSINT 뉴스 | GDELT DOC 2.0 + 국방/국제 RSS(defense.gov, Defense News, Breaking Defense, USNI News, The War Zone, 연합뉴스, BBC World, Al Jazeera) | 서버 측 기록(Neon `osint_items`) → `/api/osint` |
+| NOTAM | FAA `notamSearch`(공개, 주요 공항 목록) | 서버 측 기록(Neon `notam_notices`) → `/api/notam` |
+| NOTAM(baseline) | SkyLink NOTAM API(1차) / ICAO NOTAM(fallback) | baseline 스냅샷 |
+| 공역 폴리곤 | OpenAIP 벡터 타일 | `/api/openaip/{z}/{x}/{y}`(서버 측 키 주입 프록시) |
+| 항공기 운영자/기종 식별 | Mictronics readsb 커뮤니티 운영자 데이터셋 | `scripts/fetch-callsign-db.mjs` → `public/data/aircraft-operators.json` |
 
-1. **기상**: region Open-Meteo snapshot (cloud / visibility / gust) with an observability note.
-2. **위성**: nearest CelesTrak pass within distance + time window, plus any Copernicus scene bbox covering the track.
-3. **공역**: nearest/containing FIR (ICAO) plus NOTAM notices within radius.
-4. **OSINT**: GDELT/Google-News events within range and items inside the time window.
-5. **이상**: anomalies (`anomaly.ts`) whose `relatedTrackIds` include the track.
+값이 없거나 실패한 소스는 조용히 빈 값으로 채워지지 않는다 — 해당 축은 "데이터 없음"으로 남고 합성된 값으로 대체되지 않는다.
 
-### AOI fusion summary (`fusion.ts`)
+## 저장소 — Neon Postgres + pgvector
 
-`buildFusionEvents(scenario, anomalies)` produces read-only AOI cards (overview / review-cue / data-quality) that combine tracks, ships, weather, OSINT, satellites, and FIR on the same AOI, each with citations and confidence factors. Data gaps stay visible as source-status citations instead of synthetic events.
+라이브 피벗 레이어(항적/기상/OSINT/NOTAM 관측치)는 Neon Postgres(HTTP 드라이버, `@neondatabase/serverless`) 프로젝트 `airmaven`(ap-southeast-1)에 시계열로 누적된다.
 
-- Data mode is fixed to `API 스냅샷`: `public/data/live-scenarios.json`.
-- Live/cache OSINT integrations:
-  - GDELT + Google News RSS for news/OSINT discovery
-  - OpenSky for public ADS-B state vectors
-  - CelesTrak + satellite.js for public orbital pass context
-  - Copernicus Data Space STAC for public satellite scene metadata
-  - NASA FIRMS for thermal anomaly candidates when a MAP_KEY is configured
-  - Open-Meteo for weather/visibility/cloud context
-  - OurAirports, ICAO FIR/NOTAM, AISStream for supporting airspace/maritime context
-- Missing, disabled, rate-limited, or unsupported sources are shown as evidence gaps; the app does not fabricate placeholder intelligence.
-- Deterministic briefing/fusion logic with citations and caveats.
+- 테이블: `track_observations`, `weather_observations`, `osint_items`, `notam_notices`, `ingest_runs`(`db/schema.sql`).
+- `osint_items.embedding vector(1536)` 컬럼은 pgvector 확장으로 준비되어 있지만 **Phase 3 — 아직 미구현**이다. nullable이며 임베딩을 채우는 OpenAI 호출은 현재 코드에 없다(추후 OSINT 시맨틱 검색/RAG용 백필 예정).
+- 마이그레이션: `npm run db:migrate`(`scripts/db-migrate.mjs`, `.env`의 `DATABASE_URL` 사용).
 
-## Setup
+## Serverless API 표면 (Vercel Functions)
+
+| 엔드포인트 | 역할 |
+|---|---|
+| `GET /api/openaip/[z]/[x]/[y]` | OpenAIP 벡터 타일 프록시. `OPENAIP_API_KEY`를 서버 측에서만 주입해 브라우저에 노출하지 않는다. |
+| `GET /api/cron/record` | 관측 기록 실행 엔드포인트. `CRON_SECRET` Bearer 토큰으로 보호되며 adsb.lol 전세계 군용/뷰포트 항적, 기상, OSINT, NOTAM을 Neon에 적재한다(`db/ingest.mjs`, `recordAllObservations`). |
+| `GET /api/history` | 지역/시간범위/종류(`tracks`\|`weather`)별 저장된 관측치 조회. 타임라인 스크러버가 사용. |
+| `GET /api/osint` | 저장된 GDELT/RSS OSINT 항목 조회(지역/티어/시간범위 필터). |
+| `GET /api/notam` | 저장된 FAA NOTAM 조회(bbox 필터). |
+
+## 스케줄러 — GitHub Actions (Vercel Hobby cron은 daily-only)
+
+Vercel Hobby 플랜의 Cron Jobs는 하루 1회로 제한되어 15분 간격 기록에 쓸 수 없다. 대신 `.github/workflows/record-observations.yml`이 **15분마다** `curl`로 `/api/cron/record`를 호출한다(`RECORD_URL`, `CRON_SECRET` 리포지토리 시크릿 필요). adsb.lol/OpenSky 호출 자체는 Vercel 서버리스 함수 안에서 실행된다(Vercel egress는 adsb.lol에서 rate-limit되지 않음).
+
+## 로컬 개발
 
 ```bash
 npm install
 npm run dev
 ```
 
-`npm run dev` starts both the Vite app and the background public-data refresh loop by default. Open the local Vite URL, usually <http://localhost:5173>.
+`npm run dev`는 Vite 앱과 백그라운드 공개 데이터 갱신 루프(`scripts/dev-live.mjs`)를 함께 기동한다. 로컬 Vite URL(보통 `http://localhost:5173`)을 연다.
 
-If you intentionally want the browser app only, without automatic public API refresh, run:
+Vite 앱만 필요하면(자동 공개 API 갱신 없이):
 
 ```bash
 npm run dev:vite
 ```
 
-The default map is OSM tile mode. OSM requests are only for visual map tiles; all situation data is loaded from the local `API 스냅샷` cache. If network access is unavailable for map tiles, switch **지도 → 오프라인** or open:
-
-```text
-http://localhost:5173/?basemap=offline
-```
-
-## Public live data cache
-
-Fetch current public API snapshots:
+기타 스크립트:
 
 ```bash
-npm run fetch:live
+npm run build            # tsc -b && vite build
+npm run typecheck        # tsc --noEmit
+npm run lint             # eslint . --ext ts,tsx --max-warnings 0
+npm test                 # vitest run
+npm run preview          # vite preview
+
+npm run fetch:live       # scripts/fetch-live-data.mjs 1회 실행 → public/data/live-scenarios.json 갱신
+npm run fetch:callsigns  # 커뮤니티 운영자 데이터셋 갱신 → public/data/aircraft-operators.json
+npm run db:migrate       # Neon 스키마 마이그레이션 (.env 필요)
+npm run record           # 로컬에서 1회 관측 기록 실행 (.env 필요)
+npm run live:loop        # scripts/fetch-live-data.mjs 주기 실행 루프만
 ```
 
-This writes:
+## 환경 변수
 
-```text
-public/data/live-scenarios.json
-```
-
-The browser app loads this file by default. If a source fails or returns no usable records, that layer stays empty and its source status becomes `사용 불가`.
-
-Useful URL:
-
-```text
-http://localhost:5173/?view=ops
-```
-
-`view=ops` is the default and shows the terminal Team-mode style 4-panel screen. Use `view=narrative` when you want the longer source-matrix report view.
-
-Current live-cache sources:
-
-| Layer | API | Runtime behavior |
-|---|---|---|
-| Claim/news discovery | GDELT DOC 2.0 ArtList JSON + Google News RSS | GDELT 우선, 429 시 backoff 후 Google News RSS 대체 |
-| Aircraft tracks | OpenSky `/states/all` bbox query | Live/cache public ADS-B state vectors, capped per AOI |
-| Satellite/orbital pass | CelesTrak GP JSON `GROUP=stations` | Public GP metadata and computed ground track when reachable |
-| Satellite scenes | Copernicus Data Space STAC `/v1/search` | AOI/time-window scene metadata, platform, timestamp, cloud cover |
-| Thermal anomalies | NASA FIRMS area CSV API | Requires server-side `NASA_FIRMS_MAP_KEY`; returns VIIRS/MODIS thermal candidates |
-| Weather | Open-Meteo forecast/current API | Live temperature, wind, gust, cloud, precipitation, visibility |
-| Airport context | OurAirports CSV | Public airport markers and derived airport-axis route context |
-| FIR context | ICAO API Data Service `fir-by-location` | AOI center FIR lookup, 24h TTL cache by default |
-| AIS maritime | AISStream WebSocket `wss://stream.aisstream.io/v0/stream` | Server-side live collection; 수신 0건이면 상태 사유 표시, 직전 캐시가 신선하면 유지 |
-| NOTAM notices | SkyLink NOTAM API (기본) / ICAO NOTAM fallback | SkyLink `/notams/{icao}` 우선 시도, 실패 시 ICAO endpoint fallback |
-
-Optional OpenSky OAuth2 credentials can be added to `.env` for better rate limits:
+`.env.example`을 복사해 `.env`를 만든다:
 
 ```bash
-OPENSKY_CLIENT_ID=
-OPENSKY_CLIENT_SECRET=
+cp .env.example .env
 ```
 
-OpenSky is rate-limit aware. The fetcher reuses the previous aircraft cache and backs off when OpenSky returns HTTP 429. Anonymous mode uses a safer default OpenSky TTL instead of calling every 5 minutes:
+`.env.example`에 각 변수의 용도가 주석으로 정리되어 있다 — 필수 3개(`DATABASE_URL`, `CRON_SECRET`, `OPENAIP_API_KEY`)와 baseline 경로가 사용하는 다수의 선택적 소스 키(OpenSky OAuth2, Copernicus STAC, NASA FIRMS, AISStream, ICAO/SkyLink NOTAM)를 포함한다. **모든 키는 서버 측 전용이며 브라우저나 git에 노출되지 않는다** — 글로브는 airspace 타일과 NOTAM/OSINT 행을 항상 same-origin 프록시(`/api/*`)로 조회한다. `.env`는 gitignored.
+
+## Vercel 배포
 
 ```bash
-OPENSKY_FETCH_ENABLED=true
-OPENSKY_MIN_FETCH_INTERVAL_MS=1800000
-OPENSKY_MAX_TRACKS_PER_REGION=50
-GDELT_BACKOFF_MS=1800000
-```
-
-Optional Copernicus STAC scene metadata:
-
-```bash
-COPERNICUS_STAC_FETCH_ENABLED=true
-COPERNICUS_STAC_COLLECTIONS=sentinel-2-l2a,sentinel-1-grd
-COPERNICUS_STAC_LOOKBACK_HOURS=72
-COPERNICUS_STAC_MIN_FETCH_INTERVAL_MS=21600000
-COPERNICUS_STAC_MAX_SCENES_PER_REGION=6
-```
-
-Optional NASA FIRMS thermal anomaly lookup:
-
-```bash
-NASA_FIRMS_MAP_KEY=
-NASA_FIRMS_FETCH_ENABLED=true
-NASA_FIRMS_SOURCE=VIIRS_SNPP_NRT
-NASA_FIRMS_DAY_RANGE=1
-NASA_FIRMS_CACHE_TTL_MS=3600000
-NASA_FIRMS_MAX_RECORDS_PER_REGION=25
-```
-
-Optional AISStream credentials:
-
-```bash
-AISSTREAM_API_KEY=
-AISSTREAM_FETCH_ENABLED=true
-AISSTREAM_FETCH_MS=20000
-AISSTREAM_MAX_SHIPS_PER_REGION=30
-AISSTREAM_CACHE_TTL_MS=1800000
-```
-
-AISStream is consumed only by the Node fetch loop. The browser never connects directly to AISStream because the provider documents that browser/CORS use is unsupported and would expose the API key. If a WebSocket connection succeeds but no vessel message arrives during `AISSTREAM_FETCH_MS`, the UI shows `연결됨 · 수신 0`; if a recent ship cache exists, it shows `캐시 정상` and keeps the last known public AIS positions.
-
-Optional ICAO NOTAM credentials:
-
-```bash
-ICAO_API_KEY=
-ICAO_API_BASE_URL=https://dataservices.icao.int/api
-ICAO_FIR_FETCH_ENABLED=true
-ICAO_FIR_MIN_FETCH_INTERVAL_MS=86400000
-ICAO_NOTAM_ENDPOINT=
-ICAO_API_KEY_AUTH=query       # query | header | bearer
-ICAO_API_KEY_PARAM=api_key
-ICAO_API_KEY_HEADER=x-api-key
-ICAO_NOTAM_MAX_LOCATIONS_PER_REGION=2
-ICAO_NOTAM_MAX_PER_REGION=8
-```
-
-Optional SkyLink NOTAM credentials (default primary provider for `notices`):
-
-```bash
-SKYLINK_NOTAM_FETCH_ENABLED=true
-SKYLINK_NOTAM_API_KEY=
-SKYLINK_NOTAM_API_HOST=skylink-api.p.rapidapi.com
-SKYLINK_NOTAM_MAX_LOCATIONS_PER_REGION=2
-SKYLINK_NOTAM_MAX_PER_REGION=8
-```
-
-
-`ICAO_API_KEY` is enough for `fir-by-location` because the endpoint is visible in the account table. If your ICAO portal exposes a NOTAM endpoint, set `ICAO_NOTAM_ENDPOINT` from the portal. Endpoint templates may include `{location}`, `{icao}`, `{regionId}`, `{minLat}`, `{minLon}`, `{maxLat}`, `{maxLon}`, and `{apiKey}`.
-NOTAM 데이터 수집은 기본적으로 SkyLink API(`/notams/{icao}` + RapidAPI 헤더)를 우선 사용하고, 설정되어 있지 않으면 ICAO `ICAO_NOTAM_ENDPOINT` 경로로 fallback 됩니다.
-
-Do not treat the live cache as authoritative intelligence. It is public, incomplete, rate-limited, and intended for analyst-support review only.
-
-## Vercel deployment
-
-This project can be shared as a Vercel-hosted static dashboard. Vercel runs `npm run build` and serves the generated `dist/` directory; this is pinned in [`vercel.json`](./vercel.json).
-
-```bash
-# Optional: refresh the public API snapshot before deploying.
-npm run fetch:live
-
 npm run build
 npx vercel --prod
 ```
 
-The deployed dashboard reads `public/data/live-scenarios.json` as a snapshot. Vercel will not keep `npm run dev`, `npm run dev:live`, or `scripts/live-data-loop.mjs` running as a background process after deployment. If you need continuously refreshed shared data, add a separate scheduled backend/storage path instead of relying on the Vite static app alone.
+Vercel이 `npm run build`를 실행하고 `dist/`를 정적 자산으로 서빙한다(`vercel.json`). `api/` 아래 서버리스 함수가 함께 배포되며, `vercel.json`의 `rewrites`가 `/adsb-lol/*` → `https://api.adsb.lol/*`를 same-origin으로 프록시해 브라우저의 CORS 미지원 adsb.lol 호출을 우회한다.
 
-## Near-real-time refresh mode
+## 안전 원칙
 
-Near-real-time refresh is the default development mode:
-
-```bash
-npm run dev
-```
-
-`npm run dev:live` remains available as an explicit alias for the same combined mode.
-
-This starts:
-
-- Vite dev server
-- `scripts/live-data-loop.mjs`, which periodically runs `scripts/fetch-live-data.mjs`
-- automatic writes to `public/data/live-scenarios.json`
-- frontend polling of `/data/live-scenarios.json` every 30 seconds
-
-Default backend fetch cadence:
-
-```text
-LIVE_FETCH_INTERVAL_MS=300000       # 5 minutes
-LIVE_FETCH_RETRY_INTERVAL_MS=60000  # 1 minute after failed cycle
-```
-
-Override only when you understand public API rate limits:
-
-```bash
-LIVE_FETCH_INTERVAL_MS=120000 npm run dev
-```
-
-The UI shows:
-
-- cache generated time
-- cache age
-- last browser check age
-- frontend poll cadence
-- source-level live/cache/unavailable status
-- source-level freshness age when that source was pulled successfully
-- terminal-style **Ingest log** panel containing each browser cache-poll result for the selected AOI
-
-The small in-app log is a frontend ingest/poll log, not raw Node stdout. Raw background collection logs still print in the terminal under:
-
-```text
-[dev-live]
-[live-loop]
-```
-
-This is **near-real-time public data refresh**, not true streaming intelligence. The browser polls every 30 seconds, while backend source refresh is intentionally slower to avoid rate-limit pressure.
-
-## Coordinate accuracy policy
-
-The blue AOI rectangle is source-backed rather than hand-drawn.
-
-| AOI | Bbox format `[minLon, minLat, maxLon, maxLat]` | Source |
-|---|---:|---|
-| 대만해협 | `[118.4271213, 23.4204107, 120.7974216, 25.5523561]` | OpenStreetMap Nominatim result for `Taiwan Strait`, OSM way `1087698081` |
-| 수도권 상공 | `[124.3727348, 36.8544193, 127.8481129, 38.2811104]` | Union of OSM/Nominatim admin bboxes for Seoul, Incheon, and Gyeonggi-do |
-| 남중국해 | `[102.2384722, -3.2287222, 122.1513056, 25.5672778]` | Marine Regions Gazetteer / IHO sea-area bbox converted from DMS |
-| 서해/NLL 인근 | `[123.547708291629, 37.626084840136, 126.688972200141, 38.2047340114075]` | ArcGIS Online public `Korea Northern Limit Line` Feature Service extent |
-
-The purple dashed NLL overlay is rendered from the public ArcGIS LineString coordinates. There are no generated watch cells in the current real-data-only mode.
-
-Detailed source notes and coordinate QA criteria are documented in [`AirMaven_좌표정확도_QA_및_출처.md`](./AirMaven_%EC%A2%8C%ED%91%9C%EC%A0%95%ED%99%95%EB%8F%84_QA_%EB%B0%8F_%EC%B6%9C%EC%B2%98.md).
-
-
-## Fusion Copilot workflow
-
-The Ops board includes a deterministic Fusion Copilot workflow for hackathon review:
-
-1. Select a Korean natural-language preset or type a query. The browser parser only maps the query to AOI/module/focus intent; it does not call external LLM APIs or expose keys.
-2. `buildFusionEvents` creates source-backed Fusion Event objects from the current scenario. It does not emit an overview card unless at least one real source citation exists.
-3. Every card carries citations, confidence factors, freshness, and a safety note. Empty, disabled, unsupported, or rate-limited layers remain visible as source-status-cited data-quality gaps instead of synthetic map events.
-4. Analyst review state is local UI state for demo triage only: queued, needs review, confirmed, or dismissed. It is not an automated operational decision.
-
-Safety boundary remains unchanged: public/cache data only, no synthetic geographic events, no target designation, no strike recommendation, and no automated engagement.
-
-## Build verification
-
-```bash
-npm run build
-npm run lint
-npm test
-npm run typecheck
-npm audit --audit-level=high
-```
-
-## Optional environment
-
-Create `.env` from `.env.example` to enable the server-side observation store and the airspace overlay:
-
-```bash
-cp .env.example .env
-# edit DATABASE_URL=...       (Neon Postgres; used by db:migrate, record, and /api/*)
-# edit CRON_SECRET=...        (Bearer token the GitHub Actions scheduler sends to /api/cron/record)
-# edit OPENAIP_API_KEY=...    (server-side only; proxied via /api/openaip to render airspace)
-```
-
-All keys are **server-side only** and never exposed to the browser — the globe requests airspace tiles and NOTAM/OSINT rows through same-origin proxies. `.env` is gitignored.
-
-## Data/API plan
-
-| Layer | Primary source | Current behavior |
-|---|---|---|
-| Aircraft tracks | OpenSky Network REST API | Live/cache state vectors |
-| Weather | Open-Meteo | Visibility, cloud cover, precipitation, wind gust risk |
-| News/OSINT | GDELT DOC 2.0 + Google News RSS | Live citation cards and event-volume cues |
-| Satellite/orbital | CelesTrak GP/TLE | Public orbital awareness layer + ground-track projection when reachable |
-| Airport context | OurAirports | Cached CSV airport markers and route-axis context |
-| FIR context | ICAO `fir-by-location` | Official FIR lookup for AOI center |
-| AIS maritime | AISStream WebSocket | Server-side live AIS positions when key is configured |
-| NOTAM context | ICAO API Data Service | Official NOTAM notices when key + endpoint are configured |
-
-Reference docs are collected in [`Maven_Air_ISR_데이터_API_구현전략.md`](./Maven_Air_ISR_데이터_API_구현전략.md).
-
-## 3-minute walkthrough
-
-1. Run `npm run dev` with network access.
-2. Open the Vite URL with `?view=ops`, for example `http://localhost:5173/?view=ops`.
-3. Keep **데이터 → API 스냅샷** selected.
-4. Select an AOI.
-5. Show the 4-up Ops view: map, anomaly cues, briefing, and timeline/ingest log visible in one screen.
-6. Point out the terminal-style ingest log as proof that the browser is polling the public live cache.
-7. Switch to **Narrative · scroll report** only if you need to show the full source matrix.
-8. Close with the caveat: public/live/cached data only; analyst review required; no targeting automation.
-
-## Architecture
-
-```text
-public API fetch + public cache
-        ↓
-scripts/fetch-live-data.mjs writes public/data/live-scenarios.json
-        ↓
-src/lib/liveData.ts merges API layers without generated placeholders
-        ↓
-src/lib/anomaly.ts creates review cues
-        ↓
-src/lib/trackFusion.ts builds per-track fusion context (tracks × weather × OSINT × NOTAM)
-        ↓
-React UI: fullscreen MapLibre 3D globe (SituationRealGlobe) with live track panel + timeline
-```
+- 합성/조작 데이터 금지 — 공개 데이터만 사용, 표적화(targeting) 목적 없음.
+- 시크릿(`DATABASE_URL`, `CRON_SECRET`, `OPENAIP_API_KEY` 등)은 서버 측 전용, 브라우저·git에 노출 금지.
+- 군용 마커는 공개 ADS-B `dbFlags` 노출일 뿐, 신원 식별이나 표적 지정이 아니다.
+- OSINT/뉴스 상관관계는 확인(confirmation)이 아니다.
+- 커밋에 co-author 트레일러 없음(전역 규칙).
 
 ## Limitations
 
-- Public ADS-B data is incomplete and may omit sensitive aircraft.
-- OpenSky anonymous access is rate-limited and may return sparse regional data.
-- GDELT may rate-limit. In that case the UI shows `레이트리밋` and uses Google News RSS as fallback.
-- CelesTrak may block or rate-limit repeated downloads; when that happens, the satellite layer is empty.
-- AISStream coverage depends on public AIS receivers and the short fetch window; sparse maritime AOIs may legitimately show zero ships.
-- ICAO FIR lookup uses a 24h TTL by default because trial keys have limited calls.
-- NOTAM은 기본 SkyLink 우선 수집, 미설정 시 ICAO 계정의 `ICAO_NOTAM_ENDPOINT`로 보완 조회합니다. 설정되지 않으면 항목이 비게 표시됩니다.
-- OSINT/news correlation is not confirmation.
-- The satellite layer is public orbital awareness, not a claim of ISR collection capability.
+- 공개 ADS-B 데이터는 불완전하며 민감 항공기는 노출되지 않을 수 있다.
+- OpenSky 익명 접근은 레이트리밋되어 baseline 스냅샷이 성긴 지역 데이터를 반환할 수 있다.
+- GDELT는 공유 IP 레이트리밋으로 0건을 반환할 수 있다 — 이 경우 RSS 피드가 실질적인 OSINT 소스가 된다.
+- CelesTrak은 반복 다운로드를 차단/레이트리밋할 수 있으며, 그 경우 위성 레이어는 비어 있다.
+- AISStream 커버리지는 공개 AIS 수신기와 짧은 fetch 윈도우에 의존한다 — 선박이 적은 AOI는 정상적으로 0척일 수 있다.
+- ICAO FIR 조회는 기본 24시간 TTL 캐시를 사용한다(체험판 키의 호출 제한 때문).
+- `osint_items.embedding`(pgvector)은 Phase 3 미구현 — 현재 임베딩 백필/시맨틱 검색 없음.
+- 위성 레이어는 공개 궤도 인식(orbital awareness)일 뿐 ISR 수집 능력에 대한 주장이 아니다.
