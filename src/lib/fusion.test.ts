@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { buildFusionEvents } from './fusion';
-import { parseAnalystQuery } from './query';
 import { getScenario } from './baselineData';
 import type { Scenario, Track, WeatherSnapshot } from './types';
 
@@ -52,15 +51,13 @@ function scenarioWithRealSignals(): Scenario {
 
 describe('buildFusionEvents', () => {
   it('creates citation-backed fusion and data-quality events from real cached sources', () => {
-    const intent = parseAnalystQuery('대만해협 항적 기상 출처 품질을 설명해줘', 'taiwan-strait');
-    const events = buildFusionEvents(scenarioWithRealSignals(), [], intent);
+    const events = buildFusionEvents(scenarioWithRealSignals(), []);
 
     const overview = events.find((event) => event.id.endsWith('overview'));
     expect(overview?.title).toContain('융합 상황 요약');
     expect(overview?.modules).toEqual(expect.arrayContaining(['fusion', 'tracks', 'weather']));
     expect(overview?.citations.map((citation) => citation.source)).toEqual(expect.arrayContaining(['opensky-cache', 'open-meteo-cache']));
     expect(overview?.safetyNote).toMatch(/표적 지정|공개 출처/);
-    expect(events[0].id).toMatch(/data-quality$/);
     expect(events.some((event) => event.id.endsWith('data-quality'))).toBe(true);
   });
 

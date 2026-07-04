@@ -1,6 +1,0 @@
-{
-  "generatedAt": "2026-06-29T13:47:10.997Z",
-  "note": "The browser app never reads OPENAI_API_KEY. This public file intentionally omits key presence, provider success, model name, HTTP status, and raw provider errors.",
-  "safety": "Use public/cached/synthetic data only; no target designation or strike automation.",
-  "briefingBullets": "- Demo uses only public, cached, and synthetic data; no live or classified sources.  \n- All sourced information includes citations; users must verify before operational use.  \n- Outputs are for analyst support and require thorough human review and validation.  \n- This tool does not support targeting decisions or automate strike recommendations."
-}

@@ -9,7 +9,6 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 0.0.0.0",
-    "generate:briefing": "node scripts/generate-briefing.mjs",
     "test": "vitest run",
     "lint": "eslint . --ext ts,tsx --max-warnings 0",
     "fetch:live": "node scripts/fetch-live-data.mjs",

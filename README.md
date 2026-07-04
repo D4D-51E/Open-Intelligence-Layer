@@ -309,15 +309,16 @@ npm audit --audit-level=high
 
 ## Optional environment
 
-Create `.env` from `.env.example` if you want to precompute a server-side briefing status file:
+Create `.env` from `.env.example` to enable the server-side observation store and the airspace overlay:
 
 ```bash
 cp .env.example .env
-# edit OPENAI_API_KEY=...
-npm run generate:briefing
+# edit DATABASE_URL=...       (Neon Postgres; used by db:migrate, record, and /api/*)
+# edit CRON_SECRET=...        (Bearer token the GitHub Actions scheduler sends to /api/cron/record)
+# edit OPENAIP_API_KEY=...    (server-side only; proxied via /api/openaip to render airspace)
 ```
 
-The browser app does **not** read `OPENAI_API_KEY`; `.env` is gitignored. The generated public status file is sanitized: it does not publish key presence, model name, HTTP status, or raw provider errors. If no key is present, the app still works with deterministic public-data-only briefing text.
+All keys are **server-side only** and never exposed to the browser — the globe requests airspace tiles and NOTAM/OSINT rows through same-origin proxies. `.env` is gitignored.
 
 ## Data/API plan
 
@@ -356,9 +357,9 @@ src/lib/liveData.ts merges API layers without generated placeholders
         ↓
 src/lib/anomaly.ts creates review cues
         ↓
-src/lib/briefing.ts generates citation briefing
+src/lib/trackFusion.ts builds per-track fusion context (tracks × weather × OSINT × NOTAM)
         ↓
-React UI: Ops 4-up dashboard or narrative report view
+React UI: fullscreen MapLibre 3D globe (SituationRealGlobe) with live track panel + timeline
 ```
 
 ## Limitations
