@@ -230,14 +230,14 @@ function App() {
   const [aircraftTypeFilter, setAircraftTypeFilter] = useState<AircraftTypeFilter>('all');
   const [minimumAltitudeM, setMinimumAltitudeM] = useState(0);
   const [showAirspace, setShowAirspace] = useState(true);
-  const [showAirways, setShowAirways] = useState(false);
+  const [showAirways, setShowAirways] = useState(true);
   const [showOsint, setShowOsint] = useState(true);
   const [showNotam, setShowNotam] = useState(true);
-  const [showSeismic, setShowSeismic] = useState(false);
+  const [showSeismic, setShowSeismic] = useState(true);
   const [seismicEvents, setSeismicEvents] = useState<SeismicEvent[]>([]);
-  const [showAlerts, setShowAlerts] = useState(false);
+  const [showAlerts, setShowAlerts] = useState(true);
   const [airAlerts, setAirAlerts] = useState<AirAlert[]>([]);
-  const [showSatellites, setShowSatellites] = useState(false);
+  const [showSatellites, setShowSatellites] = useState(true);
   const [satellitePasses, setSatellitePasses] = useState<SatellitePass[]>([]);
   const satelliteModelsRef = useRef<SatelliteModel[]>([]);
   const [satModelsLoaded, setSatModelsLoaded] = useState(0);
@@ -695,9 +695,12 @@ function App() {
 
   // Live satellites: fetch the public Celestrak catalogue (TLEs) once, then re-propagate every
   // few seconds with SGP4 on the client. Bulk view (~11k active objects incl. Starlink) — markers
-  // only (no per-satellite ground tracks/labels) to stay renderable. Gated on the 위성 toggle.
+  // only (no per-satellite ground tracks/labels) to stay renderable. Gated on the 위성 toggle AND
+  // the detail zoom: the ~11k-object fetch + propagation loop only runs once zoomed in (markers
+  // render only at zoom≥MIN anyway), so leaving the layer ON by default costs nothing at global view.
+  const satActive = showSatellites && (viewport?.zoom ?? 0) >= SATELLITE_MIN_ZOOM;
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || !showSatellites) return undefined;
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function' || !satActive) return undefined;
     let cancelled = false;
     const controller = new AbortController();
     let timer = 0;
@@ -716,7 +719,7 @@ function App() {
     };
     void start();
     return () => { cancelled = true; controller.abort(); if (timer) window.clearInterval(timer); };
-  }, [showSatellites]);
+  }, [satActive]);
 
   // Live NOTAM circles (Neon /api/notam), by the current viewport bbox.
   useEffect(() => {
