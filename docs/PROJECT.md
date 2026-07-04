@@ -40,7 +40,7 @@
 | 데이터베이스 | Neon Postgres (HTTP 드라이버, 시계열) |
 | 상주 수집기 | Railway 워커 — AISStream WebSocket + adsb.lol 폴링 |
 | 스케줄링 | GitHub Actions cron (수집 15분 / 브리핑 6시간 / 실시간 경보 5분) |
-| AI · 봇 | OpenAI(gpt-4o-mini) · Telegram Bot(웹훅 + 능동 푸시) |
+| AI · 봇 | OpenAI(gpt-5.4-mini) · Telegram Bot(웹훅 + 능동 푸시) |
 | 데이터 소스 | 공개 19종 (→ [DATA-SOURCES.md](./DATA-SOURCES.md)) |
 
 ## Project Maven과의 차별점

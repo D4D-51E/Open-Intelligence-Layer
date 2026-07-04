@@ -49,7 +49,7 @@
 | 데이터베이스 | Neon Postgres (`@neondatabase/serverless` HTTP 드라이버) |
 | 상주 수집기 | Railway 워커(node:20-slim, Docker) — `ws` WebSocket |
 | 스케줄링 | GitHub Actions cron |
-| AI | OpenAI (gpt-4o-mini) |
+| AI | OpenAI (기본 `gpt-5.4-mini`, `COPILOT_MODEL`로 교체 가능) |
 | 봇 | Telegram Bot API(웹훅) |
 | 배포 | Vercel(웹+API) · Railway(수집기) · GitHub(origin·darkwinter) |
 | 테스트/게이트 | vitest(61 테스트) · tsc · vite build |
@@ -83,6 +83,7 @@
 | `osintIngest.mjs` · `notamIngest.mjs` | GDELT/RSS · FAA NOTAM 수집 |
 | `aisIngest.mjs` | AIS 수집 로직(수동 fallback) |
 | `claimAssess.mjs` | 신뢰도 채점(지오로케이트 + 열적 + 교차출처 + 지역 열활동) — 웹/봇 공용 |
+| `nameLookup.mjs` | 이름 기반 선박/항공기 조회(`ILIKE ALL`) — 웹 Copilot/봇 공용 |
 | `firms.mjs` | NASA FIRMS 조회/파싱 |
 | `airAlert.mjs` | 우크라 공습경보 파싱(오블라스트 상태) |
 | `anomalyAircraft.mjs` | 비상 스쿼크 + 고가치 자산 분류(앵커드 ICAO 코드) |

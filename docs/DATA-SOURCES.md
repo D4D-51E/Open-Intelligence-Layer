@@ -43,7 +43,7 @@ AirMaven가 사용하는 모든 외부 데이터 소스. **공개 데이터**만
 
 | # | 소스 | 용도 | 엔드포인트 | 키 | 갱신 |
 |---|---|---|---|---|---|
-| 18 | **OpenAI** | 코파일럿(지역 요약·이상탐지), 봇 브리핑 | `api.openai.com` (gpt-4o-mini) | `OPENAI_API_KEY` | 온디맨드 |
+| 18 | **OpenAI** | 코파일럿(지역 요약·이상탐지), 봇 브리핑 | `api.openai.com` (기본 gpt-5.4-mini) | `OPENAI_API_KEY` | 온디맨드 |
 | 19 | **Telegram Bot API** | 봇 조회·능동 푸시(웹훅 + sendMessage) | `api.telegram.org/bot<token>` | `TELEGRAM_BOT_TOKEN` | 실시간 |
 
 ---
@@ -57,6 +57,7 @@ AirMaven가 사용하는 모든 외부 데이터 소스. **공개 데이터**만
 | `NASA_FIRMS_MAP_KEY` | FIRMS 열적 | Vercel |
 | `OPENAIP_API_KEY` | 공역 타일 | Vercel |
 | `OPENAI_API_KEY` | AI 코파일럿·브리핑 | Vercel |
+| `COPILOT_MODEL` | AI 모델 선택(기본 `gpt-5.4-mini`) | Vercel |
 | `TELEGRAM_BOT_TOKEN` | 봇 | Vercel |
 | `TELEGRAM_WEBHOOK_SECRET` | 웹훅 위조 차단 | Vercel |
 | `TELEGRAM_ALLOWED_CHAT_IDS` / `TELEGRAM_OPEN` | 봇 접근 제어 | Vercel |
