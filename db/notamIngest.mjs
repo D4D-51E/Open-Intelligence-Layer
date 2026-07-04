@@ -16,7 +16,6 @@ const LOCATIONS = [
 ];
 
 const NM_TO_KM = 1.852;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Q-line coord+radius token, e.g. `4038N07346W005`.
 const Q_COORD_RE = /^(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])(\d{3})$/;
@@ -59,26 +58,32 @@ function parseFaaDate(value) {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
-async function fetchNotams(icao) {
-  const body = new URLSearchParams({
-    searchType: '0',
-    designatorsForLocation: icao,
-    offset: '0',
-    notamsOnly: 'false',
-    length: '30',
-  });
-  const res = await fetch(FAA_URL, { method: 'POST', headers: FAA_HEADERS, body: body.toString() });
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-  const json = await res.json();
-  return json.notamList ?? [];
+async function fetchNotams(icao, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const body = new URLSearchParams({
+      searchType: '0',
+      designatorsForLocation: icao,
+      offset: '0',
+      notamsOnly: 'false',
+      length: '30',
+    });
+    const res = await fetch(FAA_URL, { method: 'POST', headers: FAA_HEADERS, body: body.toString(), signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    const json = await res.json();
+    return json.notamList ?? [];
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-async function insertNotam(sql, icao, notam) {
+function buildNotamInsert(sql, icao, notam) {
   const coords = parseQLine(notam.icaoMessage);
   const naturalKey = `${notam.facilityDesignator ?? icao}:${notam.notamNumber ?? ''}`;
   const startAt = parseFaaDate(notam.startDate);
   const endAt = parseFaaDate(notam.endDate);
-  const rows = await sql`
+  return sql`
     INSERT INTO notam_notices
       (icao, notam_number, feature, lat, lon, radius_km, fl_min, fl_max, start_at, end_at, text, natural_key, payload)
     VALUES (
@@ -91,34 +96,42 @@ async function insertNotam(sql, icao, notam) {
     ON CONFLICT (natural_key) WHERE natural_key IS NOT NULL DO NOTHING
     RETURNING id
   `;
-  return { inserted: rows.length > 0, hasCoords: coords != null };
+}
+
+// Fetches one location and batch-inserts all its NOTAMs in a single transaction
+// (was one round-trip per NOTAM). Returns the inserted count.
+async function collectLocation(sql, icao, log) {
+  try {
+    const notamList = await fetchNotams(icao);
+    const stmts = notamList.map((notam) => buildNotamInsert(sql, icao, notam));
+    const results = stmts.length ? await sql.transaction(stmts) : [];
+    const inserted = results.reduce((sum, rows) => sum + (rows.length ?? 0), 0);
+    log?.(`${icao} fetched=${notamList.length} inserted=${inserted}`);
+    return inserted;
+  } catch (error) {
+    log?.(`${icao} FAILED: ${String(error)}`);
+    return 0;
+  }
+}
+
+// Bounded-concurrency map so we don't fire all locations at the FAA endpoint at once.
+async function mapPool(items, limit, fn) {
+  const results = [];
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < items.length) {
+      const idx = cursor;
+      cursor += 1;
+      results[idx] = await fn(items[idx]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 // Collects NOTAMs for a fixed set of ICAO locations and appends new rows to Neon.
-// `opts.paceMs` throttles requests between locations (FAA endpoint is unauthenticated/public).
-export async function collectNotam(sql, { paceMs = 400, log } = {}) {
-  let inserted = 0;
-  let withCoords = 0;
-  const byIcao = {};
-  for (const icao of LOCATIONS) {
-    await sleep(paceMs);
-    try {
-      const notamList = await fetchNotams(icao);
-      let icaoInserted = 0;
-      for (const notam of notamList) {
-        const result = await insertNotam(sql, icao, notam);
-        if (result.inserted) {
-          icaoInserted += 1;
-          inserted += 1;
-          if (result.hasCoords) withCoords += 1;
-        }
-      }
-      byIcao[icao] = icaoInserted;
-      log?.(`${icao} fetched=${notamList.length} inserted=${icaoInserted}`);
-    } catch (error) {
-      byIcao[icao] = 0;
-      log?.(`${icao} FAILED: ${String(error)}`);
-    }
-  }
-  return { inserted, withCoords, byIcao };
+// Locations are fetched with bounded concurrency (FAA endpoint is unauthenticated/public).
+export async function collectNotam(sql, { concurrency = 5, log } = {}) {
+  const counts = await mapPool(LOCATIONS, concurrency, (icao) => collectLocation(sql, icao, log));
+  return { inserted: counts.reduce((sum, n) => sum + n, 0) };
 }

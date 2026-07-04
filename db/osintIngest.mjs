@@ -153,7 +153,7 @@ async function fetchGdeltQuery(query) {
   url.searchParams.set('maxrecords', '25');
   url.searchParams.set('sort', 'DateDesc');
   url.searchParams.set('timespan', '1d');
-  const text = await fetchTextWithRetry(url, { headers: { 'user-agent': 'AirMaven-OSINT/0.1' } });
+  const text = await fetchTextWithRetry(url, { headers: { 'user-agent': 'AirMaven-OSINT/0.1' } }, { retries: 1, backoffMs: 4000 });
   const trimmed = (text || '').trim();
   // GDELT reports malformed-query errors as a plain-text 200, not JSON.
   if (trimmed && !trimmed.startsWith('{')) throw new Error(trimmed.slice(0, 200));
@@ -260,37 +260,42 @@ async function insertItems(sql, items) {
   return inserted;
 }
 
-// Runs one full collection pass across GDELT + curated RSS feeds and writes to osint_items.
-// Returns { inserted, bySource: { [source]: count } }.
-export async function collectOsint(sql, { log } = {}) {
-  const bySource = {};
-  let inserted = 0;
-
+// GDELT shares a rate limit, so its queries stay sequential-paced; returns all articles.
+async function collectGdeltItems(log) {
+  const items = [];
   for (let i = 0; i < gdeltQueries.length; i += 1) {
-    const query = gdeltQueries[i];
     if (i > 0) await sleep(GDELT_PACE_MS);
+    const query = gdeltQueries[i];
     try {
-      const items = await fetchGdeltQuery(query);
-      const count = await insertItems(sql, items);
-      inserted += count;
-      bySource.gdelt = (bySource.gdelt ?? 0) + count;
-      log?.(`gdelt "${query}" fetched=${items.length} inserted=${count}`);
+      const got = await fetchGdeltQuery(query);
+      items.push(...got);
+      log?.(`gdelt "${query}" fetched=${got.length}`);
     } catch (error) {
       log?.(`gdelt "${query}" FAILED: ${String(error)}`);
     }
   }
+  return items;
+}
 
-  for (const feed of rssFeeds) {
-    try {
-      const items = await fetchRssFeed(feed);
-      const count = await insertItems(sql, items);
-      inserted += count;
-      bySource[feed.source] = (bySource[feed.source] ?? 0) + count;
-      log?.(`${feed.source} fetched=${items.length} inserted=${count}`);
-    } catch (error) {
-      log?.(`${feed.source} FAILED: ${String(error)}`);
-    }
-  }
-
-  return { inserted, bySource };
+// Runs one full collection pass and writes to osint_items. GDELT (rate-limited → sequential)
+// runs concurrently with the RSS feeds (independent hosts → fetched in parallel); all items
+// are then inserted in one batched pass. Returns { inserted }.
+export async function collectOsint(sql, { log } = {}) {
+  const [gdeltItems, rssItemGroups] = await Promise.all([
+    collectGdeltItems(log),
+    Promise.all(rssFeeds.map(async (feed) => {
+      try {
+        const got = await fetchRssFeed(feed);
+        log?.(`${feed.source} fetched=${got.length}`);
+        return got;
+      } catch (error) {
+        log?.(`${feed.source} FAILED: ${String(error)}`);
+        return [];
+      }
+    })),
+  ]);
+  const items = [...gdeltItems, ...rssItemGroups.flat()];
+  const inserted = await insertItems(sql, items);
+  log?.(`osint inserted=${inserted} (from ${items.length} items)`);
+  return { inserted };
 }

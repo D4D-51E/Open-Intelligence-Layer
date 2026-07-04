@@ -4,12 +4,11 @@
 
 import { collectOsint } from './osintIngest.mjs';
 import { collectNotam } from './notamIngest.mjs';
-import { collectVessels } from './aisIngest.mjs';
 
 const ADSB_BASE = 'https://api.adsb.lol/v2';
 const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
 
-const regions = [
+export const regions = [
   { id: 'taiwan-strait', center: [24.4917388, 119.6054017], bbox: [118.4271213, 23.4204107, 120.7974216, 25.5523561] },
   { id: 'seoul-airspace', center: [37.5665, 126.978], bbox: [124.3727348, 36.8544193, 127.8481129, 38.2811104] },
   { id: 'south-china-sea', center: [11.1692778, 112.1948889], bbox: [102.2384722, -3.2287222, 122.1513056, 25.5672778] },
@@ -204,10 +203,11 @@ export async function recordAllObservations(sql, { paceMs = 2000, log } = {}) {
     regionResults.push(await recordRegion(sql, region, mil, log));
   }
 
-  // OSINT (GDELT + curated RSS), NOTAM (FAA), and AIS vessel (AISStream) collectors.
+  // OSINT (GDELT + curated RSS) and NOTAM (FAA) collectors. AIS vessels are collected by a
+  // separate cron (api/cron/record-vessels.mjs) because the WebSocket window has a very
+  // different timing profile and would otherwise push this pass toward the function limit.
   let osint = { inserted: 0 };
   let notam = { inserted: 0 };
-  let vessels = { inserted: 0 };
   try {
     osint = await collectOsint(sql, { log });
   } catch (error) {
@@ -218,11 +218,6 @@ export async function recordAllObservations(sql, { paceMs = 2000, log } = {}) {
   } catch (error) {
     log?.(`notam failed: ${String(error)}`);
   }
-  try {
-    vessels = await collectVessels(sql, { regions, log });
-  } catch (error) {
-    log?.(`vessels failed: ${String(error)}`);
-  }
 
   return {
     militaryFeed: mil.aircraft.length,
@@ -230,7 +225,6 @@ export async function recordAllObservations(sql, { paceMs = 2000, log } = {}) {
     totalWeather: regionResults.reduce((sum, r) => sum + r.weather, 0),
     osint: osint.inserted ?? 0,
     notam: notam.inserted ?? 0,
-    vessels: vessels.inserted ?? 0,
     regions: regionResults,
   };
 }

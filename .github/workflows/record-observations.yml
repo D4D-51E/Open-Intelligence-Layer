@@ -22,3 +22,18 @@ jobs:
             exit 1
           fi
           curl -fsS --max-time 290 -H "authorization: Bearer $CRON_SECRET" "$RECORD_URL"
+
+      # AIS vessels run on their own endpoint (separate WebSocket timing profile).
+      # `always()` so a slow/failed main record pass never skips vessel collection.
+      - name: Trigger Vercel vessel (AIS) endpoint
+        if: ${{ always() }}
+        env:
+          RECORD_URL: ${{ secrets.RECORD_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$RECORD_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "RECORD_URL / CRON_SECRET repo secrets are not set" >&2
+            exit 1
+          fi
+          VESSELS_URL="${RECORD_URL%record}record-vessels"
+          curl -fsS --max-time 120 -H "authorization: Bearer $CRON_SECRET" "$VESSELS_URL"
