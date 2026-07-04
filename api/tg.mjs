@@ -131,8 +131,11 @@ export default async function handler(req, res) {
     }
 
     if (DATA_COMMANDS.has(cmd)) {
+      // TELEGRAM_OPEN=1 → anyone who can reach the bot may run data commands (open demo mode).
+      // Otherwise default-deny unless the caller's chat id is whitelisted.
+      const open = process.env.TELEGRAM_OPEN === '1';
       const allow = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-      if (allow.length === 0 || !allow.includes(String(chatId))) {
+      if (!open && !allow.includes(String(chatId))) {
         await reply(chatId, `권한이 없습니다. 이 chat id를 TELEGRAM_ALLOWED_CHAT_IDS에 추가하세요.\n당신의 chat id: ${chatId}`);
         return;
       }
