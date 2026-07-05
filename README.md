@@ -15,6 +15,26 @@
 
 핵심은 **모으기(aggregation)를 넘어 판정(adjudication)** — 주장이 사실인지 **NASA 산불 열데이터 × 교차출처**로 대조해 확인 / 가능성 / 미확인 / 허위로 가른다.
 
+## 📸 스크린샷
+
+![융합 상황 글로브 — 공역·항로·항적·위성](./docs/screenshots/01-fusion-globe.jpg)
+<sub>다도메인 융합 상황 글로브 — 공역·항로·실시간 항적·위성을 한 화면에.</sub>
+
+<table>
+<tr>
+<td width="50%"><img src="./docs/screenshots/02-airspace-notam.jpg" width="100%"><br><sub><b>공역 + NOTAM</b> — 분류별 공역 폴리곤과 NOTAM 통제 구역.</sub></td>
+<td width="50%"><img src="./docs/screenshots/03-satellites.jpg" width="100%"><br><sub><b>실시간 위성</b> — Celestrak TLE를 브라우저에서 SGP4 전파.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="./docs/screenshots/04-verification.jpg" width="100%"><br><sub><b>OSINT 신뢰도 판정</b> — verdict + 신뢰도% + 근거(검증 패널).</sub></td>
+<td width="50%"><img src="./docs/screenshots/05-osint-claim.jpg" width="100%"><br><sub><b>OSINT 노드 팝업</b> — 주장별 판정·근거·원문 텔레그램 링크.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="./docs/screenshots/06-telegram-bot.jpg" width="100%"><br><sub><b>텔레그램 봇</b> — 모바일 조회 + 브리핑·이상항적·공습경보 푸시.</sub></td>
+<td width="50%"><sub>데모 영상 캡처 · 라이브 데이터는 시점마다 달라집니다.</sub></td>
+</tr>
+</table>
+
 ## 핵심 기능
 
 - **다도메인 융합 글로브** — 항공기 · 선박 · 위성(브라우저 내 SGP4 실시간 궤도)을 한 화면에, 뷰포트/줌 필터.
