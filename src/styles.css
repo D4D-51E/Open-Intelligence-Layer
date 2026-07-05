@@ -471,6 +471,51 @@ body {
   *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
 }
 
+/* PC 접속 게이트 — 모바일에서 데스크톱 접속 안내 */
+.mobile-gate { display: none; }
+.mobile-gate__inner {
+  align-content: center;
+  display: grid;
+  gap: 14px;
+  min-height: 100dvh;
+  padding: 24px;
+  text-align: center;
+  background: var(--bg);
+}
+.mobile-gate__inner strong {
+  font-size: clamp(1.75rem, 9vw, 2.5rem);
+  line-height: 1.05;
+  color: var(--ink);
+}
+.mobile-gate__inner p {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0 auto;
+  max-width: 24rem;
+}
+.mobile-gate__inner span {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 760;
+}
+.mobile-gate__inner a {
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+.mobile-gate__inner small {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 12px;
+}
+
+@media (max-width: 820px) {
+  .mobile-gate { display: block; }
+  .globe-shell { display: none; }
+}
+
 @media (max-width: 680px) {
   .situation-map-shell { min-height: 440px; }
   .map-region-switcher {

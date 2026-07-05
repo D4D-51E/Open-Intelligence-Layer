@@ -737,6 +737,19 @@ function App() {
 
 
   return (
+    <>
+    <section className="mobile-gate" aria-label="PC 접속 필요">
+      <div className="mobile-gate__inner">
+        <strong>PC로 접속해 주세요</strong>
+        <p>
+          AirMaven는 WebGL 실시간 글로브와 다중 HUD 레이어를 사용해 데스크톱 브라우저에 최적화되어 있습니다. 모바일에서는 항적·위성·타임라인이 정상 동작하지 않습니다.
+        </p>
+        <span>아래 주소를 PC 브라우저에서 열어주세요.</span>
+        <a href="https://d4d.n2f.site">d4d.n2f.site</a>
+        <small>팀 오일이 · AirMaven</small>
+      </div>
+    </section>
+
     <main className="globe-shell" aria-label="AirMaven 실시간 항적 글로브">
       <div className="globe-shell__map">
         <SituationRealGlobe
@@ -872,6 +885,7 @@ function App() {
         </div>
       ) : null}
     </main>
+    </>
   );
 }
 
