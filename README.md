@@ -1,8 +1,8 @@
-# [오일이] Open Intelligence Layer (OIL)
+# [오일이] Open Intelligence Layer
 
 **공개정보(OSINT)를 실시간으로 융합하고 — 검증하는 — 방어적 상황인식 플랫폼.**
 
-> **Project Maven은 기밀 영상으로 표적을 찾는다. OIL은 공개정보를 교차검증해 진실을 가린다.**
+> **Project Maven은 기밀 영상으로 표적을 찾는다. 오일이는 공개정보를 교차검증해 진실을 가린다.**
 > *Open · Verifiable · Non-targeting · 폰 안의 상황실*
 >
 > 🌐 라이브 데모: **https://d4d.n2f.site** · 👥 팀 **오일이** · *(개발명 AirMaven)*
@@ -31,9 +31,11 @@
 </tr>
 <tr>
 <td width="50%"><img src="./docs/screenshots/06-telegram-bot.jpg" width="100%"><br><sub><b>텔레그램 봇</b> — 모바일 조회 + 브리핑·이상항적·공습경보 푸시.</sub></td>
-<td width="50%"><sub>데모 영상 캡처 · 라이브 데이터는 시점마다 달라집니다.</sub></td>
+<td width="50%"><img src="./docs/screenshots/07-track-popup.jpg" width="100%"><br><sub><b>항적 팝업</b> — 항공기 식별·고도·속도·융합 컨텍스트.</sub></td>
 </tr>
 </table>
+
+<sub>※ 데모 영상 캡처 — 라이브 데이터라 시점·지역마다 화면 내용은 달라집니다.</sub>
 
 ## 핵심 기능
 

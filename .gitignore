@@ -15,3 +15,10 @@ test-results/
 .wrangler/
 *.tsbuildinfo
 .vercel
+
+# Legacy / non-essential artifacts (pre-globe-pivot briefs, old ops screenshots, participant CSVs)
+AirMaven_*.md
+airmaven-*.md
+airmaven-*.png
+D4D_SEOUL_*.csv
+credentials.json
