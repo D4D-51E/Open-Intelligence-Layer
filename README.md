@@ -54,12 +54,21 @@
 
 ## 아키텍처 (요약)
 
-```
-공개 소스 ─▶ Vercel Functions(/api, 12개) ─┬─ read: history·telegram·osint·seismic·satellites·firms·openaip
-   +                                        └─ bot: /api/tg (웹훅 + 능동 푸시)
-Railway 상주 수집기(AIS WebSocket + adsb 폴링) ─▶ Neon Postgres(시계열) ◀─ GitHub Actions cron(15분/6h/5분)
-                                                        │
-브라우저 SPA(React + MapLibre 3D + SGP4) ◀── /api ─────┘        Telegram Bot ◀── sendMessage
+```mermaid
+flowchart LR
+    SRC["공개 소스 19종<br/>adsb · AIS · TLE · FIRMS · Telegram …"]
+    COL["Railway 상주 수집기<br/>AIS WebSocket + adsb 폴링"]
+    CRON["GitHub Actions cron<br/>15분 · 6h · 5분"]
+    API["Vercel Functions /api<br/>read · cron · bot(/api/tg)"]
+    DB[("Neon Postgres<br/>시계열")]
+    WEB["브라우저 SPA<br/>React · MapLibre 3D · SGP4"]
+    BOT["Telegram Bot<br/>조회 · 능동 푸시"]
+    SRC --> COL --> DB
+    SRC --> API
+    CRON --> API
+    API <--> DB
+    API --> WEB
+    API --> BOT
 ```
 
 상세 → [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)

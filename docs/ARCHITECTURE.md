@@ -2,36 +2,34 @@
 
 ## 1. 시스템 아키텍처
 
-```
-                              ┌──────────────────────────────────────────┐
-   외부 공개 소스              │  브라우저 (SPA)                            │
-   ───────────               │  Vite + React 18 + TS                      │
-   adsb.lol ─┐               │  MapLibre GL 3D 글로브                     │
-   AISStream │               │  · 위성 SGP4 전파(satellite.js)            │
-   Celestrak │               │  · 신뢰도 검증 패널 / AI 코파일럿          │
-   NASA FIRMS│               │  · 타임라인 리플레이                        │
-   EMSC      │  fetch/폴링   └───────────────▲────────────────────────────┘
-   OpenAIP   │                               │ HTTPS (/api/*, /data/*)
-   Telegram  │               ┌───────────────┴────────────────────────────┐
-   Tzeva Adom│──────────────▶│  Vercel Serverless Functions (Node, /api)   │
-   data.go.kr│               │  read: history·telegram·osint·notam·seismic │
-   GDELT/RSS │               │        ·satellites·firms·openaip(proxy)     │
-   OpenAI    │               │  cron: cron/record   bot: tg(webhook+push)  │
-   └─────────┘               └──────────────▲──────────────┬──────────────┘
-                                            │ SQL(HTTP)     │ 트리거
-   ┌───────────────────────────┐           │               │
-   │ Railway 상주 워커(collector)│───────────┤        ┌──────┴───────────┐
-   │ · AISStream WebSocket      │  write     │        │ GitHub Actions   │
-   │ · adsb.lol 폴링(60초)      │            ▼        │ cron(스케줄러)   │
-   └───────────────────────────┘   ┌─────────────────┐│ */15 수집        │
-                                    │  Neon Postgres  ││ 0 */6 브리핑     │
-                                    │  (시계열/상태)  ││ */5 실시간 알림  │
-                                    └─────────────────┘└──────────────────┘
-                                            │ sendMessage
-                                            ▼
-                                    ┌─────────────────┐
-                                    │  Telegram Bot    │  (모바일 조회·푸시)
-                                    └─────────────────┘
+```mermaid
+flowchart LR
+    subgraph SRC["외부 공개 소스 (19종)"]
+        direction TB
+        S1["adsb.lol · AISStream · Celestrak"]
+        S2["NASA FIRMS · EMSC · OpenAIP"]
+        S3["Telegram · Tzeva Adom · data.go.kr · GDELT/RSS"]
+        S4["OpenAI"]
+    end
+
+    subgraph ING["수집 (write)"]
+        direction TB
+        COL["Railway 상주 워커<br/>AIS WebSocket + adsb 폴링(60s)"]
+        CRON["GitHub Actions cron<br/>수집 */15 · 브리핑 0 */6 · 경보 */5"]
+    end
+
+    API["Vercel Serverless Functions /api (Node)<br/>read: history·telegram·osint·notam·seismic·satellites·firms·openaip<br/>cron: cron/record · bot: tg(webhook+push)"]
+    DB[("Neon Postgres<br/>시계열 · 상태")]
+    WEB["브라우저 SPA<br/>React + MapLibre 3D · SGP4 · 검증패널 · AI 코파일럿 · 타임라인"]
+    BOT["Telegram Bot<br/>모바일 조회 · 능동 푸시"]
+
+    S1 & S2 & S3 --> COL
+    COL -->|write| DB
+    CRON -->|트리거| API
+    S1 & S2 & S3 & S4 --> API
+    API <-->|SQL HTTP| DB
+    API -->|HTTPS /api·/data| WEB
+    API -->|sendMessage| BOT
 ```
 
 핵심 설계 원칙:
@@ -134,7 +132,30 @@
 
 ### 4.3 OSINT 신뢰도 검증
 - 84개 채널 → 전쟁-결과 필터 → 지오로케이트 → verdict(확인/가능성/미확인/허위)+0–100%+근거 원장.
-- NASA FIRMS 실시간 열적 + 교차출처 + 지역 열활동(약한 맥락) 교차검증. 웹 패널·봇 동일 로직.
+- NASA FIRMS 실시간 열적 + 교차출처 + 지역 열활동(약한 맥락) 교차검증. 웹 패널·봇 동일 로직(`db/claimAssess.mjs`).
+
+**판정 파이프라인 (aggregation → adjudication):**
+
+```mermaid
+flowchart TB
+    P["텔레그램 게시물 (84개 채널)"] --> F{"전쟁-결과 키워드?"}
+    F -->|No| X["제외 (노이즈·오프토픽)"]
+    F -->|Yes| G["지오로케이트 (가제티어)"]
+    G --> TH["열적 축<br/>FIRMS 근접·인과 시간창"]
+    G --> XC["교차출처 축<br/>타 채널 동일지점·시간"]
+    G --> RG["지역 열활동<br/>(약한 맥락)"]
+    TH --> S["신뢰도 점수 0–100 + 근거 원장"]
+    XC --> S
+    RG --> S
+    S --> V{"판정"}
+    V -->|"≥2 독립축 · ≥65"| V1["✅ 확인"]
+    V -->|"≥30"| V2["🟡 가능성"]
+    V -->|"미교차"| V3["🟠 미확인"]
+    V -->|"강한 주장·신호부재"| V4["🔴 허위"]
+    classDef good fill:#123,stroke:#2c6
+    class V1 good
+```
+> 근거가 약하면 점수를 억지로 올리지 않는다 — "지역에 불남 ≠ 특정 타격 확인"을 인과 시간·거리 창으로 구분.
 
 ### 4.4 AI 코파일럿
 - 지역 상황 한국어 요약, 규칙기반 이상탐지, 멀티턴 대화. 제공 데이터에만 근거·출처 표기.
