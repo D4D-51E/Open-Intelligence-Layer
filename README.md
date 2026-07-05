@@ -110,6 +110,36 @@ npm run lint         # eslint
 npm run db:migrate   # Neon 스키마 마이그레이션 (.env 필요)
 ```
 
+## DB 연동 (셀프 호스팅)
+
+라이브 서비스는 종료됨. 아래대로 **자기 Postgres**를 붙이면 그대로 재현된다.
+
+**1. Postgres 준비** — `pgvector` 지원 필수 (`db/schema.sql`이 `CREATE EXTENSION vector` 사용).
+- Neon(무료): `neonctl projects create` 또는 [Vercel Marketplace] → 연결 문자열 복사.
+- 기타 Postgres 15+: `CREATE EXTENSION vector;` 가능한 인스턴스면 무엇이든.
+
+**2. 연결 문자열 설정** — `.env`에 (`.env.example` 참고):
+```bash
+DATABASE_URL=postgres://user:pass@host/db?sslmode=require
+```
+> 드라이버는 Neon HTTP(`@neondatabase/serverless`, `db/client.mjs`). 일반 Postgres는 HTTP 프록시 없이 안 붙으므로, 비-Neon으로 갈 땐 `db/client.mjs`를 `pg`(`Pool`)로 교체.
+
+**3. 스키마 적용** (멱등, 재실행 안전):
+```bash
+npm run db:migrate
+```
+9개 테이블 생성: `track_observations`(항공) · `vessel_observations`(선박) · `weather_observations` · `osint_items` · `notam_notices` · `telegram_posts` · `ingest_runs` · `bot_subscribers` · `bot_push_log`.
+
+**4. 데이터 적재** — 아래 중 필요한 것만:
+```bash
+npm run record       # 1회 인제스트 (adsb·기상·osint·notam·telegram → Neon)
+```
+- **상주 수집기**(`collector/`, AIS+ADS-B)는 `Dockerfile`로 Railway 배포. **주의: 상시 가동이라 DB 쓰기가 24/7 발생** → Neon 컴퓨트-시가 계속 소모돼 무료 티어를 넘긴다. 재호스팅 시 튜닝 노브:
+  - `PRUNE_HOURS`(기본 24) — 보존창. 프런트는 ~6h만 조회하므로 6~8로 낮추면 스토리지 대폭 절감.
+  - `WRITE_THROTTLE_MS`(기본 180000=3분) — 선박 MMSI당 최소 쓰기 간격. 늘리면 행 수 급감.
+  - `AISSTREAM_API_KEY` 없으면 선박 수집 스킵. `OPENSKY_*`·`NASA_FIRMS_MAP_KEY` 등 키 없는 소스는 자동 비활성.
+> 비용 참고: 기본 설정 상시 가동 시 vessel 테이블만 ~576만 행/일(≈2 GB/24h창), Neon Launch 월 약 $20~25. 데모 재현만 목적이면 `npm run record` 몇 회로 충분하고 상주 수집기는 불필요.
+
 ## 배포
 
 - **웹 + API**: Vercel — `npx vercel --prod` (`dist/` 정적 + `api/` 서버리스 함수).

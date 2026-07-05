@@ -1,11 +1,8 @@
 name: bot-briefing
 
-# ① 6-hour UA·ME conflict briefing pushed to Telegram subscribers. Vercel Hobby caps native Cron
-# to once/day, so GitHub Actions triggers the push endpoint (folded into /api/tg to stay within
-# the 12-function limit). Server-side work runs on Vercel.
+# DISABLED: live service shut down after the hackathon (2026-07). The 6-hour UA·ME conflict
+# briefing no longer pushes automatically. Kept as workflow_dispatch-only for manual reproduction.
 on:
-  schedule:
-    - cron: '0 */6 * * *'
   workflow_dispatch: {}
 
 jobs:

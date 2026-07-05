@@ -1,11 +1,9 @@
 name: record-observations
 
-# Vercel Hobby limits Cron Jobs to once/day, so the 15-minute observation writer is
-# triggered here instead. This job only calls the Vercel endpoint; the adsb.lol/OpenSky
-# fetch runs server-side on Vercel (whose egress adsb.lol does not rate-limit).
+# DISABLED: live service shut down after the hackathon (2026-07). The 15-minute observation
+# writer no longer runs automatically to avoid ongoing Neon compute/storage cost. Kept as
+# workflow_dispatch-only so ingestion can still be reproduced manually. See README "DB 연동".
 on:
-  schedule:
-    - cron: '*/15 * * * *'
   workflow_dispatch: {}
 
 jobs:

@@ -1,12 +1,9 @@
 name: bot-rapid
 
-# ②③ Rapid alerts pushed to Telegram subscribers: anomalous aircraft (emergency squawks +
-# high-value assets) and air-raid/interception sirens. Dedup is handled server-side (bot_push_log)
-# so re-runs never re-notify the same event. NOTE: GitHub Actions */5 cron is best-effort and
-# often runs late under load, so this is "near-immediate" (~5-15 min), not truly instant.
+# DISABLED: live service shut down after the hackathon (2026-07). Rapid Telegram alerts
+# (anomalous aircraft + air-raid/interception sirens) no longer poll automatically. Kept as
+# workflow_dispatch-only for manual reproduction. Dedup remains server-side (bot_push_log).
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 jobs:
