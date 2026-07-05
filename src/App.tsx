@@ -215,7 +215,29 @@ function buildSatellitePopupHtml(sat: SatellitePass): string {
   </div>`;
 }
 
+const OFFLINE_NOTICE_KEY = 'oil-offline-notice';
+
 function App() {
+  // Post-hackathon: hosted Neon + cron recorder are shut down, so DB-backed layers
+  // (timeline · vessels · telegram · OSINT · NOTAM) come back empty. Surface a dismissible
+  // notice so demo visitors know the empty layers are expected and self-hostable.
+  const [offlineNoticeDismissed, setOfflineNoticeDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(OFFLINE_NOTICE_KEY) === 'dismissed';
+    } catch {
+      return false;
+    }
+  });
+  const dismissOfflineNotice = useCallback(() => {
+    setOfflineNoticeDismissed(true);
+    try {
+      window.localStorage.setItem(OFFLINE_NOTICE_KEY, 'dismissed');
+    } catch {
+      // localStorage may be unavailable (private mode) — dismissal is best-effort.
+    }
+  }, []);
+
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [viewportTracks, setViewportTracks] = useState<Track[]>([]);
   const [liveVessels, setLiveVessels] = useState<ShipTrack[]>([]);
@@ -779,6 +801,24 @@ function App() {
         />
       </div>
 
+      {offlineNoticeDismissed ? null : (
+        <div className="globe-hud globe-hud--notice" role="status" aria-label="라이브 데이터 안내">
+          <div className="globe-hud--notice__body">
+            <strong>라이브 DB·수집기 종료</strong>
+            <p>
+              해커톤 이후 호스팅(Neon DB·크론 수집기)을 내렸습니다. 실시간 항적·위성·지진·공습경보는 그대로 동작하지만,
+              DB 기반 레이어 — <b>타임라인·선박(AIS)·텔레그램·OSINT·NOTAM</b> — 는 비어 있습니다.
+              전체 기능은 로컬에서 자기 Neon·크론을 붙이면 재현됩니다.
+            </p>
+            <a href="https://github.com/darkwinterlab/D4D#db-연동-셀프-호스팅" target="_blank" rel="noreferrer">
+              GitHub · 셀프 호스팅 가이드 →
+            </a>
+          </div>
+          <button type="button" className="globe-hud--notice__close" onClick={dismissOfflineNotice} aria-label="안내 닫기">
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="globe-hud globe-hud--topright" aria-label="필터">
         <label>
